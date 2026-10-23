@@ -1,0 +1,17 @@
+name: Teaching examples
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: node --test examples/document-desk/test/*.test.mjs examples/research-workbench/test/*.test.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: examples/read-page-mcp
+      - run: npm run demo
+        working-directory: examples/read-page-mcp

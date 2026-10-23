@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Workbench · 阅读台</title>
+<style>
+:root{color-scheme:light;--ink:#24352e;--muted:#63766b;--line:#d6e0d7;--paper:#fffefa;--accent:#2e654a;--wash:#edf2eb}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--wash);font:16px/1.7 system-ui,sans-serif}header{padding:26px max(20px,calc((100vw - 1220px)/2));background:#243c30;color:#fffefa}header p{margin:3px 0 0;color:#d0ddcf;font-size:14px}h1{font-size:24px;line-height:1.3;margin:0;font-weight:650}main{max-width:1260px;margin:auto;padding:24px 20px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px}nav,article{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px}nav h2{margin:0 0 12px;font-size:16px}button,input,a{font:inherit}button{cursor:pointer;background:#fffefa;border:1px solid var(--line);border-radius:6px;color:var(--ink);padding:6px 11px}button:hover,button:focus-visible{border-color:var(--accent);background:#eef4ec}#reports{display:grid;gap:8px}#reports button{text-align:left;overflow-wrap:anywhere}#reports button[aria-current=true]{background:#e1eddf;border-color:var(--accent)}.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px;font-size:14px}.toolbar label{display:flex;gap:6px;align-items:center}.toolbar input{width:66px;min-width:0;padding:5px;border:1px solid var(--line);border-radius:5px}#status{color:var(--muted);margin-right:auto}#body{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:0}section{border-top:1px solid var(--line);margin-top:24px;padding-top:14px}section h2{font-size:17px;margin:0 0 10px}ol{padding:0;list-style:none;margin:0;display:grid;gap:10px}.citation{background:#f2f5ef;padding:12px;border-radius:7px;overflow-wrap:anywhere}.citation button{display:block;width:100%;text-align:left;background:transparent;border:0;padding:0}.unavailable,.meta{color:var(--muted);font-size:14px}.window{white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0 0;padding:12px;border-left:3px solid #769a7b;background:#fffefa;font:inherit}a{color:var(--accent);overflow-wrap:anywhere}#message{max-width:1260px;margin:12px auto;padding:0 20px;color:var(--muted)}.empty{color:var(--muted)}@media(max-width:680px){header{padding:20px 16px}h1{font-size:21px}main{padding:14px 10px;grid-template-columns:minmax(0,1fr);gap:12px}nav,article{padding:16px;border-radius:8px}#reports{display:flex;flex-wrap:wrap}#reports button{max-width:100%}.toolbar{gap:7px}.toolbar label{flex-wrap:wrap}#status{flex-basis:100%}section{margin-top:20px}}
+</style>
+</head>
+<body>
+<header><h1>Research Workbench</h1><p>阅读报告 · 回读原始窗口 · 下载已登记附件</p></header>
+<p id="message" role="status"></p>
+<main>
+<nav aria-label="报告"><h2>报告</h2><div id="reports"></div></nav>
+<article aria-label="报告正文">
+<div class="toolbar"><span id="status">请选择报告</span><label>历史版本 <input id="revision" type="number" min="1" aria-label="历史版本号"></label><button id="history">查看</button><button id="latest">当前版本</button></div>
+<div id="body" class="empty">报告发布后会出现在这里。</div>
+<section><h2>来源</h2><ol id="citations"></ol></section>
+<section><h2>附件</h2><ol id="attachments"></ol></section>
+</article>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let selectedId;
+async function read(url){const response=await fetch(url);if(!response.ok)throw new Error('无法读取此条目（'+response.status+'）。');return response.json()}
+function element(tag,text,className){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node}
+function notice(text){$('message').textContent=text}
+async function show(id,revision){
+  try{
+    const publication=await read('/api/publications/'+encodeURIComponent(id)+(revision?'?revision='+revision:''));
+    selectedId=id;
+    $('body').textContent=publication.body;
+    $('body').className='';
+    $('status').textContent='版本 '+publication.revision+' · '+(publication.status==='preview'?'预览，尚未保存':'已保存');
+    $('revision').value=publication.revision;
+    for(const button of $('reports').children)button.setAttribute('aria-current',String(button.dataset.id===id));
+    $('citations').replaceChildren();
+    for(const citation of publication.citations){
+      const item=element('li',undefined,'citation');
+      if(citation.status==='available'){
+        const source=citation.source;
+        const button=element('button','['+citation.number+'] '+source.title+' · '+source.version+' · 第 '+source.page+' 页');
+        button.addEventListener('click',async()=>{
+          if(item.querySelector('.window')){item.querySelector('.window').remove();return}
+          try{const original=await read('/api/sources/'+encodeURIComponent(source.id));const panel=element('div',undefined,'window');panel.append(element('p',original.text),element('p','读取 '+original.readId+' · '+original.representation+' · SHA-256 '+original.hash,'meta'));item.append(panel)}catch(error){notice(error.message)}
+        });
+        item.append(button);
+      }else item.append(element('span','['+citation.number+'] 来源暂不可用；保留原编号。','unavailable'));
+      $('citations').append(item);
+    }
+    $('attachments').replaceChildren();
+    for(const attachment of publication.attachments){
+      const item=element('li');
+      if(attachment.status==='available'){
+        const artifact=attachment.artifact;
+        const link=element('a',artifact.filename+' · '+artifact.size+' bytes');
+        link.href='/api/artifacts/'+encodeURIComponent(artifact.id);
+        link.download=artifact.filename;
+        item.append(link);
+      }else item.append(element('span','此附件暂不可用。','unavailable'));
+      $('attachments').append(item);
+    }
+    notice('');
+  }catch(error){notice(error.message)}
+}
+$('history').addEventListener('click',()=>{const revision=Number($('revision').value);if(selectedId&&Number.isSafeInteger(revision)&&revision>0)show(selectedId,revision)});
+$('latest').addEventListener('click',()=>{if(selectedId)show(selectedId)});
+(async()=>{try{const publications=await read('/api/publications');for(const publication of publications){const button=element('button',publication.id);button.dataset.id=publication.id;button.addEventListener('click',()=>show(publication.id));$('reports').append(button)}if(publications.length)await show(publications[0].id);else notice('暂无已发布报告。')}catch(error){notice(error.message)}})();
+</script>
+</body>
+</html>

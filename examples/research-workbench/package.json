@@ -1,0 +1,10 @@
+{
+  "name": "agent-harness-research-workbench",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "26.11.1" },
+  "scripts": {
+    "demo": "\"$npm_node_execpath\" src/cli.mjs demo",
+    "test": "\"$npm_node_execpath\" --test test/*.test.mjs"
+  }
+}
