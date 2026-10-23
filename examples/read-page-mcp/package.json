@@ -1,0 +1,16 @@
+{
+  "name": "agent-harness-read-page-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "26.11.1" },
+  "scripts": {
+    "demo": "\"$npm_node_execpath\" client.mjs",
+    "serve": "\"$npm_node_execpath\" server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
+    "@modelcontextprotocol/server": "2.3.1",
+    "zod": "4.6.7"
+  }
+}
