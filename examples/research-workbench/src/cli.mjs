@@ -31,8 +31,8 @@ export async function main(argv = process.argv.slice(2)) {
     if (live) {
       gateway = createChatGateway({ baseUrl: process.env.HARNESS_BASE_URL, model: process.env.HARNESS_MODEL, apiKey: process.env.HARNESS_API_KEY });
       // The same explicit provider choice supplies derived summaries; Host counts it.
-      gateway.summarize = async basis => {
-        const result = await gateway.next({ messages: [{ role: 'system', text: '将已结算历史写成简短工作笔记。保留条件与原始sourceId，不认证结论或执行。' }, { role: 'user', text: JSON.stringify(basis) }], tools: [], signal: controller.signal });
+      gateway.summarize = async (basis, { signal } = {}) => {
+        const result = await gateway.next({ messages: [{ role: 'system', text: '将已结算历史写成简短工作笔记。保留条件与原始sourceId，不认证结论或执行。' }, { role: 'user', text: JSON.stringify(basis) }], tools: [], signal: signal ?? controller.signal });
         if (result.complete === false || result.calls.length) throw new Error('Summary did not complete');
         return result.text;
       };

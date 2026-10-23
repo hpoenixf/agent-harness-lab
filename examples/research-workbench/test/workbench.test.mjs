@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openWorkbench, runWorkbench } from '../src/workbench.mjs';
+import { openWorkbench, runWorkbench, createFixtureGateway } from '../src/workbench.mjs';
 
 test('complete offline loop persists paired messages, original sources, calculation lineage and downloadable files', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'workbench-'));
@@ -123,4 +123,22 @@ test('resume cannot silently switch a live Run to the fixture gateway', async t 
   const work = await openWorkbench(directory, { gatewayMode: 'chat-completions' });
   await work.close();
   await assert.rejects(runWorkbench({ directory }), /original gateway mode/);
+});
+
+test('summary requests receive the same durable cancellation signal and shared accounting', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'workbench-summary-cancel-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  let entered;
+  const pending = new Promise(resolve => { entered = resolve; });
+  const gateway = { ...createFixtureGateway(), summarize: async (basis, { signal }) => {
+    entered();
+    return new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(new Error('summary aborted')), { once: true }));
+  } };
+  const running = runWorkbench({ directory, gateway });
+  await pending;
+  const control = await openWorkbench(directory);
+  assert.equal(control.store.events().filter(e => e.type === 'model-request' && e.kind === 'summary').length, 1);
+  await control.store.cancel();
+  await control.close();
+  assert.equal((await running).status, 'paused');
 });

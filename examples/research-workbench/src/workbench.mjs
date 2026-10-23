@@ -205,7 +205,7 @@ export async function runWorkbench({ directory, initial = {}, gateway = createFi
       if (typeof gateway.summarize !== 'function') return;
       if (!budget.consume('modelRequests')) throw new Paused('Shared summary budget exhausted');
       await store.record({ type: 'model-request', kind: 'summary' });
-      const segment = await summarizeSettledTurns({ messages: range, id: 'settled-opening', basis: 'derived-working-note', summarize: gateway.summarize });
+      const segment = await summarizeSettledTurns({ messages: range, id: 'settled-opening', basis: 'derived-working-note', summarize: basis => gateway.summarize(basis, { signal: controller.signal }) });
       if (segment) await store.effect(() => compactions.commit(segment));
     }
     async function project() {
