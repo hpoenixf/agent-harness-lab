@@ -5,7 +5,7 @@
 | 示例 | 用途 |
 | --- | --- |
 | [最小文档比较](examples/document-desk/) | 从工具循环到第一份报告，无第三方依赖 |
-| [研究工作台](examples/research-workbench/) | 扩展、并行读取、上下文、记忆、引用、附件、后台与恢复，无第三方依赖 |
+| [研究工作台](examples/research-workbench/) | 扩展、并行读取、上下文、记忆、引用、附件、后台、恢复、观测与交付检查，无第三方依赖 |
 | [只读 MCP](examples/read-page-mcp/) | 真实 SDK 的 stdio 客户端与服务端，需要安装锁定依赖 |
 
 先跑完整示例：

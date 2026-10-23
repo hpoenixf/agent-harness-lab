@@ -10,6 +10,7 @@ import { createCompactionStore, buildContext, retrieveDocuments, summarizeSettle
 import { createToolRegistry, createExtensionHost } from './extensions.mjs';
 import { createSkillCatalog } from './skills.mjs';
 import { SharedBudget, runSubagents } from './subagents.mjs';
+import { usageMetadata } from './observability.mjs';
 
 const object = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
 const string = { type: 'string', minLength: 1 };
@@ -30,7 +31,7 @@ export async function openWorkbench(directory, initial = {}) {
   const compactions = await createCompactionStore(join(directory, 'compactions'));
   const messages = () => [{ role: 'user', text: store.run.task, messageId: store.run.initialMessageId },
     ...store.events().flatMap(event => event.scope !== 'root' ? [] : event.type === 'assistant'
-      ? [{ role: 'assistant', text: event.text, calls: event.calls, turnId: event.turnId }]
+      ? [{ role: 'assistant', text: event.text, calls: event.calls, turnId: event.turnId, requestId: event.requestId }]
       : event.type === 'tool-result' ? [{ role: 'tool', callId: event.callId, result: event.result }] : [])];
   return { store, sources, artifacts, publications, memory, compactions, messages, close: () => store.close() };
 }
@@ -88,6 +89,22 @@ export async function runWorkbench({ directory, initial = {}, gateway = createFi
       if (event.type === 'tool-start') budget.consume('toolCalls');
     }
     const check = () => { if (controller.signal.aborted || store.cancelled()) throw new Paused('Run cancelled'); };
+    async function requestModel({ kind, turnId, generation, invoke }) {
+      check();
+      if (!budget.consume('modelRequests')) throw new Paused(`Shared ${kind === 'summary' ? 'summary' : 'model'} budget exhausted`);
+      const requestId = `request-${store.events().filter(event => event.type === 'model-request').length + 1}`;
+      await store.record({ type: 'model-request', requestId, kind, ...(turnId ? { turnId } : {}), ...(generation !== undefined ? { generation } : {}) });
+      const started = performance.now();
+      let usage;
+      try {
+        const value = await invoke({ onUsage: reported => { usage = usageMetadata(reported); } });
+        await store.recordObservation({ type: 'model-result', requestId, kind, status: 'returned', durationMs: performance.now() - started, usage: usageMetadata(value?.usage) ?? usage });
+        return { value, requestId };
+      } catch (error) {
+        await store.recordObservation({ type: 'model-result', requestId, kind, status: 'failed', durationMs: performance.now() - started, usage });
+        throw error;
+      }
+    }
     const registry = createToolRegistry();
     const register = (name, description, inputSchema, execute) => registry.register(name, { description, inputSchema, execute });
     const skill = await createSkillCatalog([{ resourceId: 'compare-manuals', name: '比较两份手册', description: '逐页保留条件和出处', content: await readFile(new URL('../fixtures/compare-skill.md', import.meta.url), 'utf8') }]);
@@ -112,7 +129,7 @@ export async function runWorkbench({ directory, initial = {}, gateway = createFi
           const sourceIds = [];
           for (const page of [2, 4]) {
             let receipt;
-            try { receipt = await perform({ id: `${context.callId}:${task.id}:page-${page}`, name: 'read_page', args: { documentId: task.documentIds[0], page } }, { scope: task.id, grant: child.grant, lease: context.lease }); }
+            try { receipt = await perform({ id: `${context.callId}:${task.id}:page-${page}`, name: 'read_page', args: { documentId: task.documentIds[0], page } }, { scope: task.id, grant: child.grant, lease: context.lease, requestId: context.requestId }); }
             catch (error) {
               if (error instanceof Paused) return { sourceIds, output: { status: 'partial', reason: error.message, unfinishedPage: page } };
               throw error;
@@ -172,9 +189,10 @@ export async function runWorkbench({ directory, initial = {}, gateway = createFi
     } }] }) });
     if (activated.status !== 'active') throw new Error(activated.error.message);
     const pending = new Map();
-    async function perform(call, { scope = 'root', grant = store.run.grant, lease } = {}) {
+    async function perform(call, { scope = 'root', grant = store.run.grant, lease, requestId } = {}) {
       const key = canonical({ name: call.name, args: call.args, scope });
       const prior = store.events().find(e => e.type === 'tool-start' && e.callId === call.id);
+      requestId ??= prior?.requestId;
       if (prior && prior.key !== key) throw new Error('Call identity has different parameters');
       const recorded = store.events().find(e => e.type === 'tool-result' && e.callId === call.id);
       if (recorded) return recorded.result;
@@ -186,12 +204,13 @@ export async function runWorkbench({ directory, initial = {}, gateway = createFi
         check();
         if (!prior) {
           if (!budget.consume('toolCalls')) throw new Paused('Shared tool budget exhausted');
-          await store.record({ type: 'tool-start', callId: call.id, name: call.name, args: call.args, key, scope });
+          await store.record({ type: 'tool-start', callId: call.id, requestId, name: call.name, args: call.args, key, scope });
         }
-        const receipt = await lease.dispatch(call, { callId: call.id, scope, grant, lease });
+        const started = performance.now();
+        const receipt = await lease.dispatch(call, { callId: call.id, requestId, scope, grant, lease });
         const result = receipt.status === 'completed' ? { status: 'ok', ...receipt.output, toolName: call.name }
           : { status: 'failed', error: receipt.error, toolName: call.name };
-        await store.record({ type: 'tool-result', callId: call.id, name: call.name, scope, receipt, result });
+        await store.record({ type: 'tool-result', callId: call.id, requestId, name: call.name, scope, durationMs: performance.now() - started, receipt, result });
         return result;
       })();
       pending.set(call.id, { key, promise });
@@ -203,9 +222,10 @@ export async function runWorkbench({ directory, initial = {}, gateway = createFi
       const lastAssistant = history.findLastIndex(m => m.role === 'assistant');
       const range = history.slice(0, lastAssistant);
       if (typeof gateway.summarize !== 'function') return;
-      if (!budget.consume('modelRequests')) throw new Paused('Shared summary budget exhausted');
-      await store.record({ type: 'model-request', kind: 'summary' });
-      const segment = await summarizeSettledTurns({ messages: range, id: 'settled-opening', basis: 'derived-working-note', summarize: basis => gateway.summarize(basis, { signal: controller.signal }) });
+      const segment = await summarizeSettledTurns({ messages: range, id: 'settled-opening', basis: 'derived-working-note', summarize: async basis => {
+        const { value } = await requestModel({ kind: 'summary', invoke: options => gateway.summarize(basis, { signal: controller.signal, ...options }) });
+        return value;
+      } });
       if (segment) await store.effect(() => compactions.commit(segment));
     }
     async function project() {
@@ -233,28 +253,27 @@ export async function runWorkbench({ directory, initial = {}, gateway = createFi
           return { status: 'completed', reused: true, text: latest.text, directory };
         }
         const uncompleted = latest?.calls?.filter(call => !history.some(m => m.role === 'tool' && m.callId === call.id)) ?? [];
-        if (uncompleted.length) { for (const call of uncompleted) await perform(call, { lease }); continue; }
+        if (uncompleted.length) { for (const call of uncompleted) await perform(call, { lease, requestId: latest.requestId }); continue; }
         await compact();
         const messages = await project();
-        if (!budget.consume('modelRequests')) throw new Paused('Shared model budget exhausted');
         const turnId = `turn-${store.events().filter(e => e.type === 'model-request').length + 1}`;
-        await store.record({ type: 'model-request', turnId, generation: lease.generation });
-        const next = await gateway.next({ messages, tools: lease.descriptions(), signal: controller.signal, fixtureHistory: gateway.fixture ? work.messages() : undefined });
+        const { value: next, requestId } = await requestModel({ kind: 'turn', turnId, generation: lease.generation,
+          invoke: () => gateway.next({ messages, tools: lease.descriptions(), signal: controller.signal, fixtureHistory: gateway.fixture ? work.messages() : undefined }) });
         check();
         if (next.complete === false) {
-          await store.record({ type: 'draft', scope: 'root', text: next.text, finishReason: next.finishReason });
+          await store.record({ type: 'draft', scope: 'root', requestId, text: next.text, finishReason: next.finishReason });
           return { status: 'paused', reason: `Provider stopped: ${next.finishReason}`, text: next.text, directory };
         }
         if (typeof next.text !== 'string' || !Array.isArray(next.calls)) throw new Error('Gateway returned an invalid turn');
         if (new Set(next.calls.map(c => c.id)).size !== next.calls.length || next.calls.some(c => !c.id || !c.name || !c.args || typeof c.args !== 'object')) throw new Error('Gateway returned invalid call identities');
         const existingIds = new Set(store.events().filter(e => e.type === 'tool-start').map(e => e.callId));
         if (next.calls.some(c => existingIds.has(c.id))) throw new Error('Gateway reused a previous call identity');
-        await store.record({ type: 'assistant', scope: 'root', turnId, text: next.text, calls: next.calls, usage: next.usage });
+        await store.record({ type: 'assistant', scope: 'root', turnId, requestId, text: next.text, calls: next.calls, usage: next.usage });
         if (!next.calls.length) {
           await store.record({ type: 'completed', text: next.text, budget: budget.snapshot() });
           return { status: 'completed', directory, budget: budget.snapshot(), text: next.text };
         }
-        for (const call of next.calls) await perform(call, { lease });
+        for (const call of next.calls) await perform(call, { lease, requestId });
       } finally { await lease.release(); }
     }
   } catch (error) {

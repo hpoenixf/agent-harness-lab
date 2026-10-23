@@ -15,6 +15,8 @@ node examples/research-workbench/src/cli.mjs serve
 
 ```bash
 node examples/research-workbench/src/cli.mjs background --state .runs/background
+node examples/research-workbench/src/cli.mjs observe --state .runs/workbench
+node examples/research-workbench/src/cli.mjs evaluate --state .runs/workbench
 node examples/research-workbench/src/cli.mjs inspect --state .runs/background
 node examples/research-workbench/src/cli.mjs serve --state .runs/background
 node examples/research-workbench/src/cli.mjs cancel --state .runs/background
@@ -22,6 +24,8 @@ node --test examples/research-workbench/test/*.test.mjs
 ```
 
 `--state` 选择运行目录，默认 `.runs/workbench`。再次 `demo` 会复用已完成记录；新研究请选新目录。输出包含原始读取窗口、SQLite 运行事件、派生摘要、版本化记忆、发布修订和附件登记。
+
+`observe` 只读已有运行的元数据，缺失时间、用量与费用保留未知；默认不输出问题或模型正文。`evaluate` 经临时本机只读HTTP服务实际核对已保存报告、引用原窗口与附件下载字节，逐项输出证据；没有报告时明确不可检查，语义质量保持 `unreviewed`。两条命令都不调用模型，也不修改发布记录。
 
 演示保存后的进程中断：
 

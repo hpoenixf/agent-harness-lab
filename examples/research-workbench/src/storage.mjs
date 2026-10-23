@@ -16,6 +16,22 @@ function freeze(value) {
 }
 const effectContext = new AsyncLocalStorage();
 
+// Inspection never initializes, migrates, claims or cancels a Run.
+export async function readRunSnapshot(directory) {
+  let db;
+  try {
+    db = new DatabaseSync(join(directory, 'run.sqlite'), { readOnly: true });
+    db.exec('BEGIN');
+    const row = db.prepare('SELECT body FROM run WHERE id=1').get();
+    if (!row) throw new Error('Missing Run');
+    const run = JSON.parse(row.body);
+    const events = db.prepare('SELECT seq,body FROM events ORDER BY seq').all().map(row => ({ ...JSON.parse(row.body), seq: row.seq }));
+    db.exec('COMMIT');
+    return { run, events };
+  } catch { throw new Error('Unable to read existing Run state'); }
+  finally { db?.close(); }
+}
+
 // SQLite owns execution facts and fencing. Material files remain separately identified effects.
 export async function openRunStore(directory, initial = {}, { leaseMs = 10_000 } = {}) {
   if (!Number.isSafeInteger(leaseMs) || leaseMs <= 0) throw new Error('Lease duration must be a positive integer');
@@ -57,8 +73,9 @@ export async function openRunStore(directory, initial = {}, { leaseMs = 10_000 }
     if (!lease || lease.owner !== owner || lease.epoch !== epoch || lease.expires <= Date.now()) throw new Error('Execution lease is no longer owned');
   }
   function append(event) {
-    const result = db.prepare('INSERT INTO events(body) VALUES(?)').run(JSON.stringify(event));
-    return { ...event, seq: Number(result.lastInsertRowid) };
+    const recorded = { ...event, recordedAt: new Date().toISOString() };
+    const result = db.prepare('INSERT INTO events(body) VALUES(?)').run(JSON.stringify(recorded));
+    return { ...recorded, seq: Number(result.lastInsertRowid) };
   }
   async function effect(fn) {
     return enqueue(async () => {
@@ -96,6 +113,10 @@ export async function openRunStore(directory, initial = {}, { leaseMs = 10_000 }
     return { owner, epoch };
   }
   const record = event => effect(() => append(event));
+  async function recordObservation(event) {
+    try { await record(event); return { recorded: true }; }
+    catch { return { recorded: false }; }
+  }
   async function cancel() {
     return enqueue(() => transaction(() => {
       const previous = events().find(event => event.type === 'cancelled');
@@ -117,6 +138,6 @@ export async function openRunStore(directory, initial = {}, { leaseMs = 10_000 }
     });
     return closePromise;
   }
-  return { run, events, claim, record, effect, cancel, close, cancelled,
+  return { run, events, claim, record, recordObservation, effect, cancel, close, cancelled,
     fence: () => ({ owner, epoch }) };
 }

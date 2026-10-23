@@ -9,6 +9,8 @@ import { createSourceStore } from './sources.mjs';
 import { createArtifactStore } from './artifacts.mjs';
 import { createPublicationStore } from './publication.mjs';
 import { createReaderServer } from './server.mjs';
+import { observeRun } from './observability.mjs';
+import { evaluateRun } from './evaluation.mjs';
 
 export async function main(argv = process.argv.slice(2)) {
   const [command = 'demo', ...options] = argv;
@@ -28,6 +30,10 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(JSON.stringify(await createConfigTemplate(configPath)));
     return;
   }
+  if (command === 'observe' || command === 'evaluate') {
+    console.log(JSON.stringify(await (command === 'observe' ? observeRun(directory) : evaluateRun(directory)), null, 2));
+    return;
+  }
   // Offline commands do not need to read a Key or even have a configuration file.
   const modelConfig = live && ['demo', 'resume', 'background'].includes(command) ? await loadConfig({ configPath }) : undefined;
   if (['demo', 'resume'].includes(command)) {
@@ -40,8 +46,9 @@ export async function main(argv = process.argv.slice(2)) {
       if (live) {
         gateway = createChatGateway(modelConfig);
         // The same explicit provider choice supplies derived summaries; Host counts it.
-        gateway.summarize = async (basis, { signal } = {}) => {
+        gateway.summarize = async (basis, { signal, onUsage } = {}) => {
           const result = await gateway.next({ messages: [{ role: 'system', text: '将已结算历史写成简短工作笔记。保留条件与原始sourceId，不认证结论或执行。' }, { role: 'user', text: JSON.stringify(basis) }], tools: [], signal: signal ?? controller.signal });
+          onUsage?.(result.usage);
           if (result.complete === false || result.calls.length) throw new Error('Summary did not complete');
           return result.text;
         };
@@ -93,7 +100,7 @@ export async function main(argv = process.argv.slice(2)) {
     } finally { await work.close(); }
     return;
   }
-  throw new Error('Use configure, demo, resume, background, serve, inspect, or cancel');
+  throw new Error('Use configure, demo, resume, background, serve, observe, evaluate, inspect, or cancel');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
