@@ -15,7 +15,7 @@ node examples/research-workbench/src/cli.mjs demo
 node examples/research-workbench/src/cli.mjs serve
 ```
 
-打开第二条命令显示的本机地址，可以回读原页、下载报告和数据图表。默认使用确定性网关替身，不需要模型密钥；真实模型需显式选择，配置见示例说明。
+打开第二条命令显示的本机地址，可以回读原页、下载报告和数据图表。默认使用确定性网关替身，断网也能演示；单人本机使用不需要云数据库或登录。也可配置自己的Key，或接入本机无Key模型，见示例说明。
 
 运行自动检查：
 

@@ -21,13 +21,13 @@ function incompleteTurn(text, finishReason, usage) {
 
 // Nothing calls a paid provider until the caller explicitly selects this gateway.
 export function createChatGateway({ baseUrl, model, apiKey, fetchImpl = fetch, stream = true }) {
-  if (!baseUrl || !model || !apiKey) throw new Error('Set HARNESS_BASE_URL, HARNESS_MODEL and HARNESS_API_KEY');
+  if (!baseUrl || !model) throw new Error('Set HARNESS_BASE_URL and HARNESS_MODEL');
   const endpoint = new URL('chat/completions', baseUrl.replace(/\/?$/, '/'));
   if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) throw new Error('Invalid provider URL');
   return {
     async next({ messages, tools, signal }) {
       const response = await fetchImpl(endpoint, { method: 'POST', signal,
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+        headers: { 'content-type': 'application/json', ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
         body: JSON.stringify({ model, messages: encodeMessages(messages), stream,
           tools: tools.map(({ name, description, inputSchema }) => ({ type: 'function', function: { name, description, parameters: inputSchema } })) }) });
       if (!response.ok) throw new Error(`Provider returned HTTP ${response.status}`);

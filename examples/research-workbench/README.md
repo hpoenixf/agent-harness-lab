@@ -35,12 +35,22 @@ node examples/research-workbench/src/cli.mjs resume --state .runs/recovery
 
 可读源码入口：`src/workbench.mjs` 连接工具注册、受信任内建插件、Hook、按需Skill、并行子任务、关键词检索、来源外置与摘要、Memory、确定性计算、引用和附件。`src/storage.mjs` 与 `src/worker.mjs` 管执行与恢复；`src/gateway.mjs` 管普通JSON与SSE往返。各模块旁的测试覆盖可用路径与实际边界。
 
-如需真实模型，先设置 `.env.example` 所列环境变量，再显式加 `--live`。程序不自动读取环境文件：
+单人使用时，Node与运行记录都在本机，不需要部署数据库或注册应用账户。默认演示可完全断网运行。要让实际模型选择工具，先生成本机配置：
 
 ```bash
-node --env-file=examples/research-workbench/.env examples/research-workbench/src/cli.mjs demo --live --state .runs/live
+node examples/research-workbench/src/cli.mjs configure
 ```
 
-使用OpenAI风格 Chat Completions；base URL需含API版本前缀，例如 `/v1/`。真实调用会计费，授权手册、用户任务、当前记忆与派生摘要会发送给所选服务；只有本地替身和本机模拟HTTP已自动验证。默认教学预算为24次模型请求（含摘要）、80次工具调用，根任务和子任务共用并在恢复时继续累计。
+编辑 `examples/research-workbench/.env` 的三项内容，再运行：
+
+```bash
+node examples/research-workbench/src/cli.mjs demo --live --state .runs/my-model
+```
+
+`HARNESS_BASE_URL` 是兼容服务的API根地址（通常以 `/v1` 结尾），`HARNESS_MODEL` 是已提供的模型名，`HARNESS_API_KEY` 是自己的Key。模板默认指向本机 `http://127.0.0.1:1234/v1`；已在本机启动且支持工具调用的服务可留空Key，实现本地推理。使用云服务时改成其地址与Key，需要联网并按服务方规则计费。
+
+只自动读取本示例目录的 `.env`，不会向上寻找其他项目配置。环境变量优先；自定义配置可加 `--config /path/to/private.env`，后台与恢复使用相同参数。`configure` 遇到已有文件会原样保留；Key不写入运行记录、网页或命令行参数，配置文件已被Git忽略。配置好后仍需 `--live` 才会调用模型；普通 `demo` 始终使用免Key替身。
+
+用户任务、当前记忆与授权手册内容会发给自己选定的模型服务。自动验证使用本机模拟HTTP，未调用云模型。默认教学预算为24次模型请求（含摘要）、80次工具调用，根任务和子任务共用并在恢复时继续累计。
 
 边界：关键词检索不判断语义充分性，派生摘要不证明执行，记忆由模型提出、Host赋操作身份，引用只证明原窗口可回读。子任务是同一worker内的受限异步任务；后台worker才是独立进程。插件仅支持显式受信任内建贡献和整代替换，Schema验证为源码列出的有限子集。一Run只创建一份报告；CLI阅读页只展示已保存版本，保存前preview由模块测试单独演示。只读页面面向本机合成教学资料，不提供多用户生产鉴权或任意代码执行沙箱。工具和发布模块不替模型认证正文正确性。

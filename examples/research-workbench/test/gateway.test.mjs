@@ -133,3 +133,22 @@ test('caller cancellation signal reaches fetch and cancellation remains a failed
   } });
   await assert.rejects(() => gateway.next({ ...nextInput, signal: controller.signal }), error => error.name === 'AbortError');
 });
+
+test('a missing or empty Key omits Authorization for compatible providers', async () => {
+  for (const apiKey of [undefined, '']) {
+    let headers;
+    const gateway = createChatGateway({ baseUrl: 'http://127.0.0.1:1234/v1', model: 'local-model', apiKey, stream: false, fetchImpl: async (_url, options) => {
+      headers = options.headers;
+      return Response.json(completion({ content: 'local response' }));
+    } });
+    assert.equal((await gateway.next(nextInput)).text, 'local response');
+    assert.equal(Object.hasOwn(headers, 'authorization'), false);
+  }
+});
+
+test('provider URL and model remain required while remote authentication stays with the provider', async () => {
+  assert.throws(() => createChatGateway({ model: 'local-model' }), /HARNESS_BASE_URL.*HARNESS_MODEL/);
+  assert.throws(() => createChatGateway({ baseUrl: 'http://127.0.0.1:1234/v1' }), /HARNESS_BASE_URL.*HARNESS_MODEL/);
+  const gateway = createChatGateway({ baseUrl: 'https://provider.example/v1', model: 'remote-model', stream: false, fetchImpl: async () => new Response('', { status: 401 }) });
+  await assert.rejects(() => gateway.next(nextInput), /HTTP 401/);
+});
