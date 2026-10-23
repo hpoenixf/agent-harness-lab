@@ -18,8 +18,11 @@ test('a complete report preserves two different versions and a readable artifact
   const desk = await openDesk(directory);
   await desk.drive(scriptedGateway());
   const publication = desk.events().find(event => event.receipt?.publication).receipt.publication;
-  assert.deepEqual(publication.citations.map(source => [source.version, source.page]), [['1.0', 2], ['2.0', 2]]);
-  assert.equal(await readFile(join(directory, publication.attachment.path), 'utf8'), publication.body);
+  assert.deepEqual(publication.citations.map(citation => [citation.number, citation.source.version, citation.source.page]), [[1, '1.0', 2], [2, '2.0', 2]]);
+  const exported = await readFile(join(directory, publication.attachment.path), 'utf8');
+  assert(exported.startsWith(publication.body));
+  assert.match(exported, /\[1\] 产品手册 A（1.0），第 2 页/);
+  assert.match(exported, /\[2\] 产品手册 B（2.0），第 2 页/);
   assert.match(publication.body, /PDF 导出需要联网/);
   const recovered = await openDesk(directory);
   await recovered.drive({ next() { throw new Error('A completed run must not request the model again'); } });
@@ -56,12 +59,20 @@ test('recovery inherits the original grant and a call id remains bound to its ar
   await assert.rejects(recovered.perform({ ...call, args: { documentId: 'manual-a-v1', page: 1 } }), /different arguments/);
 });
 
-test('an unavailable citation is omitted while the report body is delivered', async t => {
+test('an unavailable citation keeps its number while the body and later source remain usable', async t => {
   const directory = await workspace(t);
   const desk = await openDesk(directory);
-  const receipt = await desk.perform({ id: 'report', name: 'publish_report', args: { body: '可独立交付的合成教学正文。', sourceIds: ['missing-source'] } });
+  const read = await desk.perform({ id: 'read', name: 'read_page', args: { documentId: 'manual-a-v1', page: 2 } });
+  const body = '可独立交付的合成教学正文。[1] 已读取的补充出处。[2]';
+  const receipt = await desk.perform({ id: 'report', name: 'publish_report', args: { body, sourceIds: ['missing-source', read.source.id] } });
   assert.equal(receipt.status, 'ok');
-  assert.equal(receipt.publication.body, '可独立交付的合成教学正文。');
-  assert.deepEqual(receipt.publication.citations, []);
+  assert.equal(receipt.publication.body, body);
+  assert.equal(receipt.publication.citations[0].number, 1);
+  assert.equal(receipt.publication.citations[0].status, 'unavailable');
+  assert.equal(receipt.publication.citations[1].number, 2);
+  assert.equal(receipt.publication.citations[1].source.id, read.source.id);
   assert.deepEqual(receipt.publication.unavailableSources, ['missing-source']);
+  const exported = await readFile(join(directory, receipt.publication.attachment.path), 'utf8');
+  assert.match(exported, /\[1\] 来源暂不可用/);
+  assert.match(exported, /\[2\] 产品手册 A/);
 });

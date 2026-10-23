@@ -97,12 +97,18 @@ export async function openDesk(directory, options = {}) {
       }
       const available = new Map(receipts().filter(event => event.receipt.source)
         .map(event => [event.receipt.source.id, event.receipt.source]));
-      const citations = sourceIds.filter(id => available.has(id)).map(id => available.get(id));
+      const citations = sourceIds.map((id, index) => available.has(id)
+        ? { number: index + 1, status: 'available', source: available.get(id) }
+        : { number: index + 1, status: 'unavailable', sourceId: id });
       const unavailableSources = sourceIds.filter(id => !available.has(id));
-      const attachment = { path: `artifacts/${call.id}/report.md`, sha256: digest(body), mediaType: 'text/markdown' };
+      const sourceIndex = citations.map(citation => citation.status === 'available'
+        ? `[${citation.number}] ${citation.source.title}（${citation.source.version}），第 ${citation.source.page} 页。`
+        : `[${citation.number}] 来源暂不可用。`).join('\n');
+      const exportedBody = body + (citations.length ? '\n## 来源\n\n' + sourceIndex + '\n' : '');
+      const attachment = { path: `artifacts/${call.id}/report.md`, sha256: digest(exportedBody), mediaType: 'text/markdown' };
       const publication = { body, citations, unavailableSources, attachment };
       await mkdir(join(directory, 'artifacts', call.id), { recursive: true });
-      await writeOnce(join(directory, attachment.path), body);
+      await writeOnce(join(directory, attachment.path), exportedBody);
       await writeOnce(join(directory, 'artifacts', call.id, 'publication.json'), JSON.stringify(publication, null, 2) + '\n');
       return { status: 'ok', publication };
     }
