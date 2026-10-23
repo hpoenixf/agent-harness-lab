@@ -23,7 +23,7 @@ test('a complete report preserves two different versions and a readable artifact
   assert(exported.startsWith(publication.body));
   assert.match(exported, /\[1\] 产品手册 A（1.0），第 2 页/);
   assert.match(exported, /\[2\] 产品手册 B（2.0），第 2 页/);
-  assert.match(publication.body, /PDF 导出需要联网/);
+  assert.match(publication.body, /新版新增 PDF 导出/);
   const recovered = await openDesk(directory);
   await recovered.drive({ next() { throw new Error('A completed run must not request the model again'); } });
 });

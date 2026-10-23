@@ -6,11 +6,11 @@ import { join } from 'node:path';
 export const documents = Object.freeze({
   'manual-a-v1': Object.freeze({
     title: '产品手册 A', version: '1.0',
-    pages: Object.freeze(['安装后可以浏览和搜索本地资料。', '离线导出支持 Markdown 和 PDF。']),
+    pages: Object.freeze(['编辑后请点击保存。', '导出：仅支持 Markdown。导出的文件包含笔记正文，不含操作历史。']),
   }),
   'manual-b-v2': Object.freeze({
     title: '产品手册 B', version: '2.0',
-    pages: Object.freeze(['安装后可以浏览和搜索本地资料。', '离线导出支持 Markdown。PDF 导出需要联网。']),
+    pages: Object.freeze(['编辑后自动保存。', '导出：支持 Markdown 和 PDF。导出的文件包含笔记正文，不含操作历史。']),
   }),
 });
 
@@ -56,7 +56,7 @@ export async function openDesk(directory, options = {}) {
   }
   if (events.length === 0) {
     await record({ type: 'run_created', runId: 'comparison-1',
-      task: '比较两版手册的离线导出，保留页码出处并生成报告。',
+      task: '比较两版手册的导出格式，保留页码出处并生成报告。',
       grant: { documentIds: options.documentIds ?? Object.keys(documents) } });
   }
   // 冷恢复读取原 Run 的 Grant；options 不覆盖已有授权。
@@ -164,7 +164,7 @@ export function scriptedGateway() {
       ] };
       const saved = results.find(message => message.result.publication);
       if (!saved) return { text: '', calls: [{ id: 'save-report', name: 'publish_report', args: {
-        body: '# 两版手册的离线导出\n\nA 版可离线导出 Markdown 和 PDF。[1]\nB 版仍可离线导出 Markdown，PDF 导出需要联网。[2]\n\n变化集中在 PDF 导出条件。\n',
+        body: '# 两版手册的导出格式\n\nA 版导出仅支持 Markdown。[1]\nB 版导出支持 Markdown 和 PDF。[2]\n\n新版新增 PDF 导出，两版导出均不包含操作历史。\n',
         sourceIds: reads.map(message => message.result.source.id),
       } }] };
       return { text: '报告已保存，可按引用回读两版手册第 2 页。', calls: [] };
