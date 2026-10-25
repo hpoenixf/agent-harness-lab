@@ -2,9 +2,12 @@
   "name": "agent-harness-document-desk",
   "private": true,
   "type": "module",
-  "engines": { "node": "26.11.1" },
+  "engines": {
+    "node": ">=26.11.1 <27"
+  },
   "scripts": {
     "demo": "\"$npm_node_execpath\" src/demo.mjs",
     "test": "\"$npm_node_execpath\" --test test/*.test.mjs"
-  }
+  },
+  "license": "MIT"
 }

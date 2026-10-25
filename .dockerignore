@@ -1,0 +1,27 @@
+# Credentials and local environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local runtime state and dependencies
+.runs
+**/.runs
+node_modules
+**/node_modules
+.git
+**/.git
+
+# Local databases and logs
+*.sqlite*
+*.db*
+*.log*
+logs
+.logs
+**/*.sqlite*
+**/*.db*
+**/*.log*
+**/logs
+**/.logs

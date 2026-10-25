@@ -1,0 +1,3759 @@
+{
+  "schema": "lab-live-public-record@1",
+  "date": "2026-10-25",
+  "source": {
+    "project": "agent-harness-lab",
+    "observedBaseRevision": "c79979a0c530319d49248b0c192d12357b2e27a9",
+    "entry": "createChatGateway → runWorkbench → evaluateRun",
+    "note": "公开runner由本批实际使用的任务核心提取；提取后没有为覆盖结果而重跑。"
+  },
+  "model": "deepseek-v4.1-flash",
+  "task": {
+    "id": "free-offline-editing",
+    "input": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。"
+  },
+  "run": {
+    "status": "completed",
+    "budget": {
+      "modelRequests": {
+        "limit": 24,
+        "used": 6,
+        "remaining": 18
+      },
+      "toolCalls": {
+        "limit": 80,
+        "used": 8,
+        "remaining": 72
+      }
+    },
+    "text": "**结论：A 1.0 和 B 2.0 的免费版都不能离线编辑，只能离线查看已缓存页面，编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 不可以，编辑需要联网 [S1] | 不可以，编辑需要联网 [S2] |\n| 哪个版本能离线编辑 | 该页未提及（缺口，不等于不存在） | 仅**企业版**支持离线编辑 [S2] |\n\n**出处（原文，均已读取原页）**\n- [S1] 产品手册 A v1.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。”\n- [S2] 产品手册 B v2.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。”\n\n**条件要点**\n1. 离线查看仅限“已缓存页面”，两版手册都未说明未缓存页面在离线时如何表现。\n2. B 2.0 给出了离线编辑的唯一例外：企业版。A 1.0 该页只写了免费版，没有说明付费版或企业版是否可以离线编辑。\n3. 两版免费版的导出配额不同：A 为 1000 条/次，B 为 5000 条/次。这属于另一个问题，我没有把它并入本次离线对比。\n\n**未解决的问题**：A 1.0 的企业版是否支持离线编辑；离线缓存的有效期与清理规则；未缓存页面离线时的具体表现；B 手册第 1 页的“编辑后自动保存”在离线场景下如何生效（不做推断）。\n\n报告已保存为可下载文件：`report-md` 和 `report-html`（publicationId: `comparison`，revision 1）。你可以稍后直接打开这两个文件；引用使用上方的 [S1] 和 [S2] 对应原页读取记录。"
+  },
+  "modelExchange": [
+    {
+      "requestNumber": 1,
+      "messages": [
+        {
+          "role": "system",
+          "text": "你比较两份已授权的合成手册。按需读取Skill。候选不是引用；必须读取原页。调用工具保存后才可声称已保存。不要将摘要当作执行事实。用户偏好：[]\nSkills:[{\"id\":\"compare-manuals\",\"name\":\"比较两份手册\",\"description\":\"逐页保留条件和出处\",\"resourceId\":\"compare-manuals\",\"contentHash\":\"0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc\"}]"
+        },
+        {
+          "role": "user",
+          "text": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。",
+          "messageId": "user-task"
+        }
+      ],
+      "tools": [
+        {
+          "name": "read_skill_resource",
+          "description": "Read the supplied comparison Skill. No filesystem paths accepted.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_documents",
+          "description": "Find candidate pages in the original Run grant; read them before citing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_page",
+          "description": "Read an authorized page and record its immutable original window.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "documentId",
+              "page"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_result",
+          "description": "Reopen a registered original read window by sourceId.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "delegate_reads",
+          "description": "Read export format and limit pages in parallel with narrower document grants.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "documentIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_metrics",
+          "description": "Load synthetic structured export limits for already read page-4 windows.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_memory",
+          "description": "Search current user memory and issue version-bound mutation targets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "commit_memory",
+          "description": "Save an explicitly requested preference; Host assigns operation identity. Forget/update requires a searched target.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "save",
+                  "forget"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "calculate_limits",
+          "description": "Calculate change from two stored structured inputs, preserving code and source lineage.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "publish_report",
+          "description": "Preview and durably save body, fixed citation slots and registered downloadable files. Body remains independent of missing attachments.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "body",
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "transport": {
+        "status": 200,
+        "contentType": "text/event-stream",
+        "errorName": null,
+        "errorCode": null
+      },
+      "responseShape": {
+        "finishReason": "tool_calls",
+        "sseDone": true,
+        "providerErrorType": null,
+        "providerErrorCode": null
+      },
+      "response": {
+        "text": "I'll start by reading the comparison Skill, then locate the two manuals.",
+        "calls": [
+          {
+            "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+            "name": "read_skill_resource",
+            "args": {
+              "resourceId": "compare-manuals"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 1142,
+          "completion_tokens": 57,
+          "total_tokens": 1199,
+          "prompt_tokens_details": {
+            "cached_tokens": 896
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "cost": 0,
+          "opencode": {
+            "billing_source": "go",
+            "list_cost": 7.379e-05,
+            "allowance": 5.534e-05,
+            "tokens": {
+              "input": 246,
+              "output": 57,
+              "reasoning": 0,
+              "cache_read": 896,
+              "cache_write_5m": 0,
+              "cache_write_1h": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "requestNumber": 2,
+      "messages": [
+        {
+          "role": "system",
+          "text": "你比较两份已授权的合成手册。按需读取Skill。候选不是引用；必须读取原页。调用工具保存后才可声称已保存。不要将摘要当作执行事实。用户偏好：[]\nSkills:[{\"id\":\"compare-manuals\",\"name\":\"比较两份手册\",\"description\":\"逐页保留条件和出处\",\"resourceId\":\"compare-manuals\",\"contentHash\":\"0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc\"}]"
+        },
+        {
+          "role": "user",
+          "text": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。",
+          "messageId": "user-task"
+        },
+        {
+          "role": "assistant",
+          "text": "I'll start by reading the comparison Skill, then locate the two manuals.",
+          "calls": [
+            {
+              "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+              "name": "read_skill_resource",
+              "args": {
+                "resourceId": "compare-manuals"
+              }
+            }
+          ],
+          "turnId": "turn-1",
+          "requestId": "request-1"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+          "result": {
+            "status": "completed",
+            "resourceId": "compare-manuals",
+            "contentHash": "0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc",
+            "text": "# Compare supplied manuals\n\n1. Read the relevant pages of both manuals before comparing a feature.\n2. Keep each observation attached to its document and source receipt.\n3. Compare one concrete question at a time: export format, saving, or offline use.\n4. Preserve conditions such as plan tier and page scope in the comparison.\n5. If a page is silent, report that gap. Silence alone does not establish that a feature is absent.\n6. Finish with the supported comparison and a short list of unresolved questions.\n",
+            "range": {
+              "start": 0,
+              "end": 509,
+              "total": 509
+            },
+            "coverage": "complete",
+            "toolName": "read_skill_resource"
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "read_skill_resource",
+          "description": "Read the supplied comparison Skill. No filesystem paths accepted.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_documents",
+          "description": "Find candidate pages in the original Run grant; read them before citing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_page",
+          "description": "Read an authorized page and record its immutable original window.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "documentId",
+              "page"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_result",
+          "description": "Reopen a registered original read window by sourceId.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "delegate_reads",
+          "description": "Read export format and limit pages in parallel with narrower document grants.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "documentIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_metrics",
+          "description": "Load synthetic structured export limits for already read page-4 windows.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_memory",
+          "description": "Search current user memory and issue version-bound mutation targets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "commit_memory",
+          "description": "Save an explicitly requested preference; Host assigns operation identity. Forget/update requires a searched target.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "save",
+                  "forget"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "calculate_limits",
+          "description": "Calculate change from two stored structured inputs, preserving code and source lineage.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "publish_report",
+          "description": "Preview and durably save body, fixed citation slots and registered downloadable files. Body remains independent of missing attachments.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "body",
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "transport": {
+        "status": 200,
+        "contentType": "text/event-stream",
+        "errorName": null,
+        "errorCode": null
+      },
+      "responseShape": {
+        "finishReason": "tool_calls",
+        "sseDone": true,
+        "providerErrorType": null,
+        "providerErrorCode": null
+      },
+      "response": {
+        "text": "",
+        "calls": [
+          {
+            "id": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+            "name": "search_documents",
+            "args": {
+              "query": "A 1.0 synthetic manual"
+            }
+          },
+          {
+            "id": "call_01_szdMNluZd27KeTGQGTmZ0846",
+            "name": "search_documents",
+            "args": {
+              "query": "B 2.0 synthetic manual"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 1404,
+          "completion_tokens": 86,
+          "total_tokens": 1490,
+          "prompt_tokens_details": {
+            "cached_tokens": 1152
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 6
+          },
+          "cost": 0,
+          "opencode": {
+            "billing_source": "go",
+            "list_cost": 9.286e-05,
+            "allowance": 6.964e-05,
+            "tokens": {
+              "input": 252,
+              "output": 86,
+              "reasoning": 6,
+              "cache_read": 1152,
+              "cache_write_5m": 0,
+              "cache_write_1h": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "requestNumber": 3,
+      "messages": [
+        {
+          "role": "system",
+          "text": "你比较两份已授权的合成手册。按需读取Skill。候选不是引用；必须读取原页。调用工具保存后才可声称已保存。不要将摘要当作执行事实。用户偏好：[]\nSkills:[{\"id\":\"compare-manuals\",\"name\":\"比较两份手册\",\"description\":\"逐页保留条件和出处\",\"resourceId\":\"compare-manuals\",\"contentHash\":\"0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc\"}]"
+        },
+        {
+          "role": "user",
+          "text": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。",
+          "messageId": "user-task"
+        },
+        {
+          "role": "assistant",
+          "text": "I'll start by reading the comparison Skill, then locate the two manuals.",
+          "calls": [
+            {
+              "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+              "name": "read_skill_resource",
+              "args": {
+                "resourceId": "compare-manuals"
+              }
+            }
+          ],
+          "turnId": "turn-1",
+          "requestId": "request-1"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+          "result": {
+            "status": "completed",
+            "resourceId": "compare-manuals",
+            "contentHash": "0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc",
+            "text": "# Compare supplied manuals\n\n1. Read the relevant pages of both manuals before comparing a feature.\n2. Keep each observation attached to its document and source receipt.\n3. Compare one concrete question at a time: export format, saving, or offline use.\n4. Preserve conditions such as plan tier and page scope in the comparison.\n5. If a page is silent, report that gap. Silence alone does not establish that a feature is absent.\n6. Finish with the supported comparison and a short list of unresolved questions.\n",
+            "range": {
+              "start": 0,
+              "end": 509,
+              "total": 509
+            },
+            "coverage": "complete",
+            "toolName": "read_skill_resource"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "",
+          "calls": [
+            {
+              "id": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+              "name": "search_documents",
+              "args": {
+                "query": "A 1.0 synthetic manual"
+              }
+            },
+            {
+              "id": "call_01_szdMNluZd27KeTGQGTmZ0846",
+              "name": "search_documents",
+              "args": {
+                "query": "B 2.0 synthetic manual"
+              }
+            }
+          ],
+          "turnId": "turn-2",
+          "requestId": "request-2"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 2,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：仅支持 Markdown。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：支持 Markdown 和 PDF。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_szdMNluZd27KeTGQGTmZ0846",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "read_skill_resource",
+          "description": "Read the supplied comparison Skill. No filesystem paths accepted.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_documents",
+          "description": "Find candidate pages in the original Run grant; read them before citing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_page",
+          "description": "Read an authorized page and record its immutable original window.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "documentId",
+              "page"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_result",
+          "description": "Reopen a registered original read window by sourceId.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "delegate_reads",
+          "description": "Read export format and limit pages in parallel with narrower document grants.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "documentIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_metrics",
+          "description": "Load synthetic structured export limits for already read page-4 windows.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_memory",
+          "description": "Search current user memory and issue version-bound mutation targets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "commit_memory",
+          "description": "Save an explicitly requested preference; Host assigns operation identity. Forget/update requires a searched target.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "save",
+                  "forget"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "calculate_limits",
+          "description": "Calculate change from two stored structured inputs, preserving code and source lineage.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "publish_report",
+          "description": "Preview and durably save body, fixed citation slots and registered downloadable files. Body remains independent of missing attachments.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "body",
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "transport": {
+        "status": 200,
+        "contentType": "text/event-stream",
+        "errorName": null,
+        "errorCode": null
+      },
+      "responseShape": {
+        "finishReason": "tool_calls",
+        "sseDone": true,
+        "providerErrorType": null,
+        "providerErrorCode": null
+      },
+      "response": {
+        "text": "候选结果主要涉及导出，我需要另外查找离线/编辑相关页面。",
+        "calls": [
+          {
+            "id": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+            "name": "search_documents",
+            "args": {
+              "query": "离线 免费版 编辑"
+            }
+          },
+          {
+            "id": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+            "name": "search_documents",
+            "args": {
+              "query": "offline mode free plan read-only"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 1780,
+          "completion_tokens": 117,
+          "total_tokens": 1897,
+          "prompt_tokens_details": {
+            "cached_tokens": 1280
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 24
+          },
+          "cost": 0,
+          "opencode": {
+            "billing_source": "go",
+            "list_cost": 0.00014904,
+            "allowance": 0.00011178,
+            "tokens": {
+              "input": 500,
+              "output": 117,
+              "reasoning": 24,
+              "cache_read": 1280,
+              "cache_write_5m": 0,
+              "cache_write_1h": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "requestNumber": 4,
+      "messages": [
+        {
+          "role": "system",
+          "text": "你比较两份已授权的合成手册。按需读取Skill。候选不是引用；必须读取原页。调用工具保存后才可声称已保存。不要将摘要当作执行事实。用户偏好：[]\nSkills:[{\"id\":\"compare-manuals\",\"name\":\"比较两份手册\",\"description\":\"逐页保留条件和出处\",\"resourceId\":\"compare-manuals\",\"contentHash\":\"0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc\"}]"
+        },
+        {
+          "role": "user",
+          "text": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。",
+          "messageId": "user-task"
+        },
+        {
+          "role": "assistant",
+          "text": "I'll start by reading the comparison Skill, then locate the two manuals.",
+          "calls": [
+            {
+              "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+              "name": "read_skill_resource",
+              "args": {
+                "resourceId": "compare-manuals"
+              }
+            }
+          ],
+          "turnId": "turn-1",
+          "requestId": "request-1"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+          "result": {
+            "status": "completed",
+            "resourceId": "compare-manuals",
+            "contentHash": "0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc",
+            "text": "# Compare supplied manuals\n\n1. Read the relevant pages of both manuals before comparing a feature.\n2. Keep each observation attached to its document and source receipt.\n3. Compare one concrete question at a time: export format, saving, or offline use.\n4. Preserve conditions such as plan tier and page scope in the comparison.\n5. If a page is silent, report that gap. Silence alone does not establish that a feature is absent.\n6. Finish with the supported comparison and a short list of unresolved questions.\n",
+            "range": {
+              "start": 0,
+              "end": 509,
+              "total": 509
+            },
+            "coverage": "complete",
+            "toolName": "read_skill_resource"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "",
+          "calls": [
+            {
+              "id": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+              "name": "search_documents",
+              "args": {
+                "query": "A 1.0 synthetic manual"
+              }
+            },
+            {
+              "id": "call_01_szdMNluZd27KeTGQGTmZ0846",
+              "name": "search_documents",
+              "args": {
+                "query": "B 2.0 synthetic manual"
+              }
+            }
+          ],
+          "turnId": "turn-2",
+          "requestId": "request-2"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 2,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：仅支持 Markdown。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：支持 Markdown 和 PDF。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_szdMNluZd27KeTGQGTmZ0846",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "候选结果主要涉及导出，我需要另外查找离线/编辑相关页面。",
+          "calls": [
+            {
+              "id": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+              "name": "search_documents",
+              "args": {
+                "query": "离线 免费版 编辑"
+              }
+            },
+            {
+              "id": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+              "name": "search_documents",
+              "args": {
+                "query": "offline mode free plan read-only"
+              }
+            }
+          ],
+          "turnId": "turn-3",
+          "requestId": "request-3"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 3,
+                "score": 5,
+                "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 3,
+                "score": 5,
+                "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 3,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 3,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 1,
+                "score": 1,
+                "excerpt": "编辑后请点击保存。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 1,
+                "score": 1,
+                "excerpt": "编辑后自动保存。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+          "result": {
+            "status": "ok",
+            "candidates": [],
+            "toolName": "search_documents"
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "read_skill_resource",
+          "description": "Read the supplied comparison Skill. No filesystem paths accepted.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_documents",
+          "description": "Find candidate pages in the original Run grant; read them before citing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_page",
+          "description": "Read an authorized page and record its immutable original window.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "documentId",
+              "page"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_result",
+          "description": "Reopen a registered original read window by sourceId.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "delegate_reads",
+          "description": "Read export format and limit pages in parallel with narrower document grants.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "documentIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_metrics",
+          "description": "Load synthetic structured export limits for already read page-4 windows.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_memory",
+          "description": "Search current user memory and issue version-bound mutation targets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "commit_memory",
+          "description": "Save an explicitly requested preference; Host assigns operation identity. Forget/update requires a searched target.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "save",
+                  "forget"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "calculate_limits",
+          "description": "Calculate change from two stored structured inputs, preserving code and source lineage.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "publish_report",
+          "description": "Preview and durably save body, fixed citation slots and registered downloadable files. Body remains independent of missing attachments.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "body",
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "transport": {
+        "status": 200,
+        "contentType": "text/event-stream",
+        "errorName": null,
+        "errorCode": null
+      },
+      "responseShape": {
+        "finishReason": "tool_calls",
+        "sseDone": true,
+        "providerErrorType": null,
+        "providerErrorCode": null
+      },
+      "response": {
+        "text": "",
+        "calls": [
+          {
+            "id": "call_00_Y0puVrS2S3HH8EStW0l28705",
+            "name": "read_page",
+            "args": {
+              "documentId": "manual-a-v1",
+              "page": 3
+            }
+          },
+          {
+            "id": "call_01_hxVA25oSP9dkd4urNS940577",
+            "name": "read_page",
+            "args": {
+              "documentId": "manual-b-v2",
+              "page": 3
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 2150,
+          "completion_tokens": 216,
+          "total_tokens": 2366,
+          "prompt_tokens_details": {
+            "cached_tokens": 1664
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 110
+          },
+          "cost": 0,
+          "opencode": {
+            "billing_source": "go",
+            "list_cost": 0.00020749,
+            "allowance": 0.00015562,
+            "tokens": {
+              "input": 486,
+              "output": 216,
+              "reasoning": 110,
+              "cache_read": 1664,
+              "cache_write_5m": 0,
+              "cache_write_1h": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "requestNumber": 5,
+      "messages": [
+        {
+          "role": "system",
+          "text": "你比较两份已授权的合成手册。按需读取Skill。候选不是引用；必须读取原页。调用工具保存后才可声称已保存。不要将摘要当作执行事实。用户偏好：[]\nSkills:[{\"id\":\"compare-manuals\",\"name\":\"比较两份手册\",\"description\":\"逐页保留条件和出处\",\"resourceId\":\"compare-manuals\",\"contentHash\":\"0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc\"}]"
+        },
+        {
+          "role": "user",
+          "text": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。",
+          "messageId": "user-task"
+        },
+        {
+          "role": "assistant",
+          "text": "I'll start by reading the comparison Skill, then locate the two manuals.",
+          "calls": [
+            {
+              "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+              "name": "read_skill_resource",
+              "args": {
+                "resourceId": "compare-manuals"
+              }
+            }
+          ],
+          "turnId": "turn-1",
+          "requestId": "request-1"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+          "result": {
+            "status": "completed",
+            "resourceId": "compare-manuals",
+            "contentHash": "0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc",
+            "text": "# Compare supplied manuals\n\n1. Read the relevant pages of both manuals before comparing a feature.\n2. Keep each observation attached to its document and source receipt.\n3. Compare one concrete question at a time: export format, saving, or offline use.\n4. Preserve conditions such as plan tier and page scope in the comparison.\n5. If a page is silent, report that gap. Silence alone does not establish that a feature is absent.\n6. Finish with the supported comparison and a short list of unresolved questions.\n",
+            "range": {
+              "start": 0,
+              "end": 509,
+              "total": 509
+            },
+            "coverage": "complete",
+            "toolName": "read_skill_resource"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "",
+          "calls": [
+            {
+              "id": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+              "name": "search_documents",
+              "args": {
+                "query": "A 1.0 synthetic manual"
+              }
+            },
+            {
+              "id": "call_01_szdMNluZd27KeTGQGTmZ0846",
+              "name": "search_documents",
+              "args": {
+                "query": "B 2.0 synthetic manual"
+              }
+            }
+          ],
+          "turnId": "turn-2",
+          "requestId": "request-2"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 2,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：仅支持 Markdown。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：支持 Markdown 和 PDF。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_szdMNluZd27KeTGQGTmZ0846",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "候选结果主要涉及导出，我需要另外查找离线/编辑相关页面。",
+          "calls": [
+            {
+              "id": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+              "name": "search_documents",
+              "args": {
+                "query": "离线 免费版 编辑"
+              }
+            },
+            {
+              "id": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+              "name": "search_documents",
+              "args": {
+                "query": "offline mode free plan read-only"
+              }
+            }
+          ],
+          "turnId": "turn-3",
+          "requestId": "request-3"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 3,
+                "score": 5,
+                "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 3,
+                "score": 5,
+                "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 3,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 3,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 1,
+                "score": 1,
+                "excerpt": "编辑后请点击保存。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 1,
+                "score": 1,
+                "excerpt": "编辑后自动保存。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+          "result": {
+            "status": "ok",
+            "candidates": [],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "",
+          "calls": [
+            {
+              "id": "call_00_Y0puVrS2S3HH8EStW0l28705",
+              "name": "read_page",
+              "args": {
+                "documentId": "manual-a-v1",
+                "page": 3
+              }
+            },
+            {
+              "id": "call_01_hxVA25oSP9dkd4urNS940577",
+              "name": "read_page",
+              "args": {
+                "documentId": "manual-b-v2",
+                "page": 3
+              }
+            }
+          ],
+          "turnId": "turn-4",
+          "requestId": "request-4"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_Y0puVrS2S3HH8EStW0l28705",
+          "result": {
+            "status": "ok",
+            "sourceId": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+            "source": {
+              "id": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+              "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_00_Y0puVrS2S3HH8EStW0l28705",
+              "documentId": "manual-a-v1",
+              "title": "产品手册 A",
+              "version": "1.0",
+              "page": 3,
+              "hash": "e9ff60299460e1ae135d84e943db057532a01bce9db5c79370069192f9717608",
+              "representation": "plain-text"
+            },
+            "text": "免费版可离线查看已缓存页面，编辑需要联网。",
+            "toolName": "read_page"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_hxVA25oSP9dkd4urNS940577",
+          "result": {
+            "status": "ok",
+            "sourceId": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+            "source": {
+              "id": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+              "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_01_hxVA25oSP9dkd4urNS940577",
+              "documentId": "manual-b-v2",
+              "title": "产品手册 B",
+              "version": "2.0",
+              "page": 3,
+              "hash": "181216965b2d51038041ca42633c245025f0355b42fa38089eaf48bf95a056f8",
+              "representation": "plain-text"
+            },
+            "text": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。",
+            "toolName": "read_page"
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "read_skill_resource",
+          "description": "Read the supplied comparison Skill. No filesystem paths accepted.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_documents",
+          "description": "Find candidate pages in the original Run grant; read them before citing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_page",
+          "description": "Read an authorized page and record its immutable original window.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "documentId",
+              "page"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_result",
+          "description": "Reopen a registered original read window by sourceId.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "delegate_reads",
+          "description": "Read export format and limit pages in parallel with narrower document grants.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "documentIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_metrics",
+          "description": "Load synthetic structured export limits for already read page-4 windows.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_memory",
+          "description": "Search current user memory and issue version-bound mutation targets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "commit_memory",
+          "description": "Save an explicitly requested preference; Host assigns operation identity. Forget/update requires a searched target.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "save",
+                  "forget"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "calculate_limits",
+          "description": "Calculate change from two stored structured inputs, preserving code and source lineage.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "publish_report",
+          "description": "Preview and durably save body, fixed citation slots and registered downloadable files. Body remains independent of missing attachments.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "body",
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "transport": {
+        "status": 200,
+        "contentType": "text/event-stream",
+        "errorName": null,
+        "errorCode": null
+      },
+      "responseShape": {
+        "finishReason": "tool_calls",
+        "sseDone": true,
+        "providerErrorType": null,
+        "providerErrorCode": null
+      },
+      "response": {
+        "text": "已读取两本手册对应页，现在保存报告。",
+        "calls": [
+          {
+            "id": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+            "name": "publish_report",
+            "args": {
+              "body": "# 离线编辑能力对比：手册 A 1.0 vs 手册 B 2.0\n\n## 结论（针对免费版）\n两版免费版一致：**离线状态下不能编辑，只能查看已缓存页面；编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 需要联网，不能离线编辑 [S1] | 需要联网，不能离线编辑 [S2] |\n| 离线编辑的版本条件 | 该页未提及任何可离线编辑的版本（缺口，不等于不存在） | 仅企业版支持离线编辑 [S2] |\n\n## 逐条出处\n- [S1] 产品手册 A，版本 1.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。」\n- [S2] 产品手册 B，版本 2.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。」\n\n## 条件与适用范围说明\n1. 「离线查看」仅限**已缓存页面**，两版手册均未说明未缓存页面的离线行为。\n2. B 2.0 明确给出了离线编辑的例外条件：**企业版**。A 1.0 第 3 页只描述了免费版，未说明付费/企业版是否可离线编辑。\n3. 本结论只覆盖手册第 3 页所述的离线/编辑条件；免费版导出配额（A 为 1000 条/次、B 为 5000 条/次）属于另一问题，未纳入本对比。\n\n## 未解决的问题（手册未覆盖）\n1. A 1.0 的企业版或其他付费版本能否离线编辑？该页未说明。\n2. 两版手册都未说明离线查看时已缓存页面的存储/过期规则。\n3. 未缓存页面在离线时的具体表现（报错、只读占位等）未见描述。\n4. 离线编辑是否会自动排队同步（B 手册第 1 页提到「编辑后自动保存」）未见与离线场景的关联说明，故不作推断。\n",
+              "sourceIds": [
+                "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+                "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a"
+              ]
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 2755,
+          "completion_tokens": 942,
+          "total_tokens": 3697,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 279
+          },
+          "cost": 0,
+          "opencode": {
+            "billing_source": "go",
+            "list_cost": 0.00067739,
+            "allowance": 0.00050805,
+            "tokens": {
+              "input": 707,
+              "output": 942,
+              "reasoning": 279,
+              "cache_read": 2048,
+              "cache_write_5m": 0,
+              "cache_write_1h": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "requestNumber": 6,
+      "messages": [
+        {
+          "role": "system",
+          "text": "你比较两份已授权的合成手册。按需读取Skill。候选不是引用；必须读取原页。调用工具保存后才可声称已保存。不要将摘要当作执行事实。用户偏好：[]\nSkills:[{\"id\":\"compare-manuals\",\"name\":\"比较两份手册\",\"description\":\"逐页保留条件和出处\",\"resourceId\":\"compare-manuals\",\"contentHash\":\"0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc\"}]"
+        },
+        {
+          "role": "user",
+          "text": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。",
+          "messageId": "user-task"
+        },
+        {
+          "role": "assistant",
+          "text": "I'll start by reading the comparison Skill, then locate the two manuals.",
+          "calls": [
+            {
+              "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+              "name": "read_skill_resource",
+              "args": {
+                "resourceId": "compare-manuals"
+              }
+            }
+          ],
+          "turnId": "turn-1",
+          "requestId": "request-1"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+          "result": {
+            "status": "completed",
+            "resourceId": "compare-manuals",
+            "contentHash": "0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc",
+            "text": "# Compare supplied manuals\n\n1. Read the relevant pages of both manuals before comparing a feature.\n2. Keep each observation attached to its document and source receipt.\n3. Compare one concrete question at a time: export format, saving, or offline use.\n4. Preserve conditions such as plan tier and page scope in the comparison.\n5. If a page is silent, report that gap. Silence alone does not establish that a feature is absent.\n6. Finish with the supported comparison and a short list of unresolved questions.\n",
+            "range": {
+              "start": 0,
+              "end": 509,
+              "total": 509
+            },
+            "coverage": "complete",
+            "toolName": "read_skill_resource"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "",
+          "calls": [
+            {
+              "id": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+              "name": "search_documents",
+              "args": {
+                "query": "A 1.0 synthetic manual"
+              }
+            },
+            {
+              "id": "call_01_szdMNluZd27KeTGQGTmZ0846",
+              "name": "search_documents",
+              "args": {
+                "query": "B 2.0 synthetic manual"
+              }
+            }
+          ],
+          "turnId": "turn-2",
+          "requestId": "request-2"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 2,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：仅支持 Markdown。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 2,
+                "score": 1,
+                "excerpt": "导出：支持 Markdown 和 PDF。导出的文件包含笔记正文，不含操作历史。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_szdMNluZd27KeTGQGTmZ0846",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 1,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "候选结果主要涉及导出，我需要另外查找离线/编辑相关页面。",
+          "calls": [
+            {
+              "id": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+              "name": "search_documents",
+              "args": {
+                "query": "离线 免费版 编辑"
+              }
+            },
+            {
+              "id": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+              "name": "search_documents",
+              "args": {
+                "query": "offline mode free plan read-only"
+              }
+            }
+          ],
+          "turnId": "turn-3",
+          "requestId": "request-3"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+          "result": {
+            "status": "ok",
+            "candidates": [
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 3,
+                "score": 5,
+                "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 3,
+                "score": 5,
+                "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 4,
+                "score": 3,
+                "excerpt": "免费版每次最多导出 1000 条记录。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 4,
+                "score": 3,
+                "excerpt": "免费版每次最多导出 5000 条记录。"
+              },
+              {
+                "documentId": "manual-a-v1",
+                "version": "1.0",
+                "page": 1,
+                "score": 1,
+                "excerpt": "编辑后请点击保存。"
+              },
+              {
+                "documentId": "manual-b-v2",
+                "version": "2.0",
+                "page": 1,
+                "score": 1,
+                "excerpt": "编辑后自动保存。"
+              }
+            ],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+          "result": {
+            "status": "ok",
+            "candidates": [],
+            "toolName": "search_documents"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "",
+          "calls": [
+            {
+              "id": "call_00_Y0puVrS2S3HH8EStW0l28705",
+              "name": "read_page",
+              "args": {
+                "documentId": "manual-a-v1",
+                "page": 3
+              }
+            },
+            {
+              "id": "call_01_hxVA25oSP9dkd4urNS940577",
+              "name": "read_page",
+              "args": {
+                "documentId": "manual-b-v2",
+                "page": 3
+              }
+            }
+          ],
+          "turnId": "turn-4",
+          "requestId": "request-4"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_Y0puVrS2S3HH8EStW0l28705",
+          "result": {
+            "status": "ok",
+            "sourceId": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+            "source": {
+              "id": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+              "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_00_Y0puVrS2S3HH8EStW0l28705",
+              "documentId": "manual-a-v1",
+              "title": "产品手册 A",
+              "version": "1.0",
+              "page": 3,
+              "hash": "e9ff60299460e1ae135d84e943db057532a01bce9db5c79370069192f9717608",
+              "representation": "plain-text"
+            },
+            "text": "免费版可离线查看已缓存页面，编辑需要联网。",
+            "toolName": "read_page"
+          }
+        },
+        {
+          "role": "tool",
+          "callId": "call_01_hxVA25oSP9dkd4urNS940577",
+          "result": {
+            "status": "ok",
+            "sourceId": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+            "source": {
+              "id": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+              "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_01_hxVA25oSP9dkd4urNS940577",
+              "documentId": "manual-b-v2",
+              "title": "产品手册 B",
+              "version": "2.0",
+              "page": 3,
+              "hash": "181216965b2d51038041ca42633c245025f0355b42fa38089eaf48bf95a056f8",
+              "representation": "plain-text"
+            },
+            "text": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。",
+            "toolName": "read_page"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": "已读取两本手册对应页，现在保存报告。",
+          "calls": [
+            {
+              "id": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+              "name": "publish_report",
+              "args": {
+                "body": "# 离线编辑能力对比：手册 A 1.0 vs 手册 B 2.0\n\n## 结论（针对免费版）\n两版免费版一致：**离线状态下不能编辑，只能查看已缓存页面；编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 需要联网，不能离线编辑 [S1] | 需要联网，不能离线编辑 [S2] |\n| 离线编辑的版本条件 | 该页未提及任何可离线编辑的版本（缺口，不等于不存在） | 仅企业版支持离线编辑 [S2] |\n\n## 逐条出处\n- [S1] 产品手册 A，版本 1.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。」\n- [S2] 产品手册 B，版本 2.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。」\n\n## 条件与适用范围说明\n1. 「离线查看」仅限**已缓存页面**，两版手册均未说明未缓存页面的离线行为。\n2. B 2.0 明确给出了离线编辑的例外条件：**企业版**。A 1.0 第 3 页只描述了免费版，未说明付费/企业版是否可离线编辑。\n3. 本结论只覆盖手册第 3 页所述的离线/编辑条件；免费版导出配额（A 为 1000 条/次、B 为 5000 条/次）属于另一问题，未纳入本对比。\n\n## 未解决的问题（手册未覆盖）\n1. A 1.0 的企业版或其他付费版本能否离线编辑？该页未说明。\n2. 两版手册都未说明离线查看时已缓存页面的存储/过期规则。\n3. 未缓存页面在离线时的具体表现（报错、只读占位等）未见描述。\n4. 离线编辑是否会自动排队同步（B 手册第 1 页提到「编辑后自动保存」）未见与离线场景的关联说明，故不作推断。\n",
+                "sourceIds": [
+                  "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+                  "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a"
+                ]
+              }
+            }
+          ],
+          "turnId": "turn-5",
+          "requestId": "request-5"
+        },
+        {
+          "role": "tool",
+          "callId": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+          "result": {
+            "status": "ok",
+            "publicationId": "comparison",
+            "revision": 1,
+            "artifactIds": [
+              "report-md",
+              "report-html"
+            ],
+            "toolName": "publish_report"
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "read_skill_resource",
+          "description": "Read the supplied comparison Skill. No filesystem paths accepted.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_documents",
+          "description": "Find candidate pages in the original Run grant; read them before citing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_page",
+          "description": "Read an authorized page and record its immutable original window.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "documentId",
+              "page"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_result",
+          "description": "Reopen a registered original read window by sourceId.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sourceId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "delegate_reads",
+          "description": "Read export format and limit pages in parallel with narrower document grants.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "documentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "documentIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "read_metrics",
+          "description": "Load synthetic structured export limits for already read page-4 windows.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "search_memory",
+          "description": "Search current user memory and issue version-bound mutation targets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "commit_memory",
+          "description": "Save an explicitly requested preference; Host assigns operation identity. Forget/update requires a searched target.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "save",
+                  "forget"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "calculate_limits",
+          "description": "Calculate change from two stored structured inputs, preserving code and source lineage.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "publish_report",
+          "description": "Preview and durably save body, fixed citation slots and registered downloadable files. Body remains independent of missing attachments.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "body",
+              "sourceIds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "transport": {
+        "status": 200,
+        "contentType": "text/event-stream",
+        "errorName": null,
+        "errorCode": null
+      },
+      "responseShape": {
+        "finishReason": "stop",
+        "sseDone": true,
+        "providerErrorType": null,
+        "providerErrorCode": null
+      },
+      "response": {
+        "text": "**结论：A 1.0 和 B 2.0 的免费版都不能离线编辑，只能离线查看已缓存页面，编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 不可以，编辑需要联网 [S1] | 不可以，编辑需要联网 [S2] |\n| 哪个版本能离线编辑 | 该页未提及（缺口，不等于不存在） | 仅**企业版**支持离线编辑 [S2] |\n\n**出处（原文，均已读取原页）**\n- [S1] 产品手册 A v1.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。”\n- [S2] 产品手册 B v2.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。”\n\n**条件要点**\n1. 离线查看仅限“已缓存页面”，两版手册都未说明未缓存页面在离线时如何表现。\n2. B 2.0 给出了离线编辑的唯一例外：企业版。A 1.0 该页只写了免费版，没有说明付费版或企业版是否可以离线编辑。\n3. 两版免费版的导出配额不同：A 为 1000 条/次，B 为 5000 条/次。这属于另一个问题，我没有把它并入本次离线对比。\n\n**未解决的问题**：A 1.0 的企业版是否支持离线编辑；离线缓存的有效期与清理规则；未缓存页面离线时的具体表现；B 手册第 1 页的“编辑后自动保存”在离线场景下如何生效（不做推断）。\n\n报告已保存为可下载文件：`report-md` 和 `report-html`（publicationId: `comparison`，revision 1）。你可以稍后直接打开这两个文件；引用使用上方的 [S1] 和 [S2] 对应原页读取记录。",
+        "calls": [],
+        "usage": {
+          "prompt_tokens": 3466,
+          "completion_tokens": 467,
+          "total_tokens": 3933,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "cost": 0,
+          "opencode": {
+            "billing_source": "go",
+            "list_cost": 0.00040496,
+            "allowance": 0.00030372,
+            "tokens": {
+              "input": 778,
+              "output": 467,
+              "reasoning": 0,
+              "cache_read": 2688,
+              "cache_write_5m": 0,
+              "cache_write_1h": 0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "executionEvents": [
+    {
+      "type": "context-projection",
+      "charCount": 157,
+      "externalizedSourceIds": [],
+      "summaryIds": [],
+      "recordedAt": "2026-10-25T13:46:36.096Z",
+      "seq": 1
+    },
+    {
+      "type": "model-request",
+      "requestId": "request-1",
+      "kind": "turn",
+      "turnId": "turn-1",
+      "generation": 1,
+      "recordedAt": "2026-10-25T13:46:36.096Z",
+      "seq": 2
+    },
+    {
+      "type": "model-result",
+      "requestId": "request-1",
+      "kind": "turn",
+      "status": "returned",
+      "durationMs": 2003.5467500000013,
+      "usage": {
+        "prompt_tokens": 1142,
+        "completion_tokens": 57,
+        "total_tokens": 1199
+      },
+      "recordedAt": "2026-10-25T13:46:38.100Z",
+      "seq": 3
+    },
+    {
+      "type": "assistant",
+      "scope": "root",
+      "turnId": "turn-1",
+      "requestId": "request-1",
+      "text": "I'll start by reading the comparison Skill, then locate the two manuals.",
+      "calls": [
+        {
+          "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+          "name": "read_skill_resource",
+          "args": {
+            "resourceId": "compare-manuals"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 1142,
+        "completion_tokens": 57,
+        "total_tokens": 1199,
+        "prompt_tokens_details": {
+          "cached_tokens": 896
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "cost": 0,
+        "opencode": {
+          "billing_source": "go",
+          "list_cost": 7.379e-05,
+          "allowance": 5.534e-05,
+          "tokens": {
+            "input": 246,
+            "output": 57,
+            "reasoning": 0,
+            "cache_read": 896,
+            "cache_write_5m": 0,
+            "cache_write_1h": 0
+          }
+        }
+      },
+      "recordedAt": "2026-10-25T13:46:38.100Z",
+      "seq": 4
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+      "requestId": "request-1",
+      "name": "read_skill_resource",
+      "args": {
+        "resourceId": "compare-manuals"
+      },
+      "key": "{\"args\":{\"resourceId\":\"compare-manuals\"},\"name\":\"read_skill_resource\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:38.101Z",
+      "seq": 5
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:38.101Z",
+      "seq": 6
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+      "requestId": "request-1",
+      "name": "read_skill_resource",
+      "scope": "root",
+      "durationMs": 0.39720800000213785,
+      "receipt": {
+        "id": "call_00_ET_3PiEp9E8dgMOUGNfpLJo7669",
+        "name": "read_skill_resource",
+        "args": {
+          "resourceId": "compare-manuals"
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "completed",
+          "resourceId": "compare-manuals",
+          "contentHash": "0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc",
+          "text": "# Compare supplied manuals\n\n1. Read the relevant pages of both manuals before comparing a feature.\n2. Keep each observation attached to its document and source receipt.\n3. Compare one concrete question at a time: export format, saving, or offline use.\n4. Preserve conditions such as plan tier and page scope in the comparison.\n5. If a page is silent, report that gap. Silence alone does not establish that a feature is absent.\n6. Finish with the supported comparison and a short list of unresolved questions.\n",
+          "range": {
+            "start": 0,
+            "end": 509,
+            "total": 509
+          },
+          "coverage": "complete"
+        },
+        "originalArgs": {
+          "resourceId": "compare-manuals"
+        }
+      },
+      "result": {
+        "status": "completed",
+        "resourceId": "compare-manuals",
+        "contentHash": "0af7ac329b77639914857e370cedef399af8da8d9601bb66c9ff74e7ab0255cc",
+        "text": "# Compare supplied manuals\n\n1. Read the relevant pages of both manuals before comparing a feature.\n2. Keep each observation attached to its document and source receipt.\n3. Compare one concrete question at a time: export format, saving, or offline use.\n4. Preserve conditions such as plan tier and page scope in the comparison.\n5. If a page is silent, report that gap. Silence alone does not establish that a feature is absent.\n6. Finish with the supported comparison and a short list of unresolved questions.\n",
+        "range": {
+          "start": 0,
+          "end": 509,
+          "total": 509
+        },
+        "coverage": "complete",
+        "toolName": "read_skill_resource"
+      },
+      "recordedAt": "2026-10-25T13:46:38.101Z",
+      "seq": 7
+    },
+    {
+      "type": "context-projection",
+      "charCount": 1257,
+      "externalizedSourceIds": [],
+      "summaryIds": [],
+      "recordedAt": "2026-10-25T13:46:38.102Z",
+      "seq": 8
+    },
+    {
+      "type": "model-request",
+      "requestId": "request-2",
+      "kind": "turn",
+      "turnId": "turn-2",
+      "generation": 1,
+      "recordedAt": "2026-10-25T13:46:38.103Z",
+      "seq": 9
+    },
+    {
+      "type": "model-result",
+      "requestId": "request-2",
+      "kind": "turn",
+      "status": "returned",
+      "durationMs": 2744.402500000004,
+      "usage": {
+        "prompt_tokens": 1404,
+        "completion_tokens": 86,
+        "total_tokens": 1490
+      },
+      "recordedAt": "2026-10-25T13:46:40.848Z",
+      "seq": 10
+    },
+    {
+      "type": "assistant",
+      "scope": "root",
+      "turnId": "turn-2",
+      "requestId": "request-2",
+      "text": "",
+      "calls": [
+        {
+          "id": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+          "name": "search_documents",
+          "args": {
+            "query": "A 1.0 synthetic manual"
+          }
+        },
+        {
+          "id": "call_01_szdMNluZd27KeTGQGTmZ0846",
+          "name": "search_documents",
+          "args": {
+            "query": "B 2.0 synthetic manual"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 1404,
+        "completion_tokens": 86,
+        "total_tokens": 1490,
+        "prompt_tokens_details": {
+          "cached_tokens": 1152
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 6
+        },
+        "cost": 0,
+        "opencode": {
+          "billing_source": "go",
+          "list_cost": 9.286e-05,
+          "allowance": 6.964e-05,
+          "tokens": {
+            "input": 252,
+            "output": 86,
+            "reasoning": 6,
+            "cache_read": 1152,
+            "cache_write_5m": 0,
+            "cache_write_1h": 0
+          }
+        }
+      },
+      "recordedAt": "2026-10-25T13:46:40.849Z",
+      "seq": 11
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+      "requestId": "request-2",
+      "name": "search_documents",
+      "args": {
+        "query": "A 1.0 synthetic manual"
+      },
+      "key": "{\"args\":{\"query\":\"A 1.0 synthetic manual\"},\"name\":\"search_documents\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:40.849Z",
+      "seq": 12
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:40.850Z",
+      "seq": 13
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+      "requestId": "request-2",
+      "name": "search_documents",
+      "scope": "root",
+      "durationMs": 0.6451670000024023,
+      "receipt": {
+        "id": "call_00_IQIVtVwNPGUMuWK01xgo6680",
+        "name": "search_documents",
+        "args": {
+          "query": "A 1.0 synthetic manual"
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "ok",
+          "candidates": [
+            {
+              "documentId": "manual-a-v1",
+              "version": "1.0",
+              "page": 4,
+              "score": 2,
+              "excerpt": "免费版每次最多导出 1000 条记录。"
+            },
+            {
+              "documentId": "manual-a-v1",
+              "version": "1.0",
+              "page": 2,
+              "score": 1,
+              "excerpt": "导出：仅支持 Markdown。导出的文件包含笔记正文，不含操作历史。"
+            },
+            {
+              "documentId": "manual-b-v2",
+              "version": "2.0",
+              "page": 2,
+              "score": 1,
+              "excerpt": "导出：支持 Markdown 和 PDF。导出的文件包含笔记正文，不含操作历史。"
+            },
+            {
+              "documentId": "manual-b-v2",
+              "version": "2.0",
+              "page": 4,
+              "score": 1,
+              "excerpt": "免费版每次最多导出 5000 条记录。"
+            }
+          ]
+        },
+        "originalArgs": {
+          "query": "A 1.0 synthetic manual"
+        }
+      },
+      "result": {
+        "status": "ok",
+        "candidates": [
+          {
+            "documentId": "manual-a-v1",
+            "version": "1.0",
+            "page": 4,
+            "score": 2,
+            "excerpt": "免费版每次最多导出 1000 条记录。"
+          },
+          {
+            "documentId": "manual-a-v1",
+            "version": "1.0",
+            "page": 2,
+            "score": 1,
+            "excerpt": "导出：仅支持 Markdown。导出的文件包含笔记正文，不含操作历史。"
+          },
+          {
+            "documentId": "manual-b-v2",
+            "version": "2.0",
+            "page": 2,
+            "score": 1,
+            "excerpt": "导出：支持 Markdown 和 PDF。导出的文件包含笔记正文，不含操作历史。"
+          },
+          {
+            "documentId": "manual-b-v2",
+            "version": "2.0",
+            "page": 4,
+            "score": 1,
+            "excerpt": "免费版每次最多导出 5000 条记录。"
+          }
+        ],
+        "toolName": "search_documents"
+      },
+      "recordedAt": "2026-10-25T13:46:40.850Z",
+      "seq": 14
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_01_szdMNluZd27KeTGQGTmZ0846",
+      "requestId": "request-2",
+      "name": "search_documents",
+      "args": {
+        "query": "B 2.0 synthetic manual"
+      },
+      "key": "{\"args\":{\"query\":\"B 2.0 synthetic manual\"},\"name\":\"search_documents\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:40.851Z",
+      "seq": 15
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_01_szdMNluZd27KeTGQGTmZ0846",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:40.851Z",
+      "seq": 16
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_01_szdMNluZd27KeTGQGTmZ0846",
+      "requestId": "request-2",
+      "name": "search_documents",
+      "scope": "root",
+      "durationMs": 0.3936249999969732,
+      "receipt": {
+        "id": "call_01_szdMNluZd27KeTGQGTmZ0846",
+        "name": "search_documents",
+        "args": {
+          "query": "B 2.0 synthetic manual"
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "ok",
+          "candidates": [
+            {
+              "documentId": "manual-a-v1",
+              "version": "1.0",
+              "page": 4,
+              "score": 1,
+              "excerpt": "免费版每次最多导出 1000 条记录。"
+            },
+            {
+              "documentId": "manual-b-v2",
+              "version": "2.0",
+              "page": 4,
+              "score": 1,
+              "excerpt": "免费版每次最多导出 5000 条记录。"
+            }
+          ]
+        },
+        "originalArgs": {
+          "query": "B 2.0 synthetic manual"
+        }
+      },
+      "result": {
+        "status": "ok",
+        "candidates": [
+          {
+            "documentId": "manual-a-v1",
+            "version": "1.0",
+            "page": 4,
+            "score": 1,
+            "excerpt": "免费版每次最多导出 1000 条记录。"
+          },
+          {
+            "documentId": "manual-b-v2",
+            "version": "2.0",
+            "page": 4,
+            "score": 1,
+            "excerpt": "免费版每次最多导出 5000 条记录。"
+          }
+        ],
+        "toolName": "search_documents"
+      },
+      "recordedAt": "2026-10-25T13:46:40.852Z",
+      "seq": 17
+    },
+    {
+      "type": "context-projection",
+      "charCount": 2433,
+      "externalizedSourceIds": [],
+      "summaryIds": [],
+      "recordedAt": "2026-10-25T13:46:40.853Z",
+      "seq": 18
+    },
+    {
+      "type": "model-request",
+      "requestId": "request-3",
+      "kind": "turn",
+      "turnId": "turn-3",
+      "generation": 1,
+      "recordedAt": "2026-10-25T13:46:40.853Z",
+      "seq": 19
+    },
+    {
+      "type": "model-result",
+      "requestId": "request-3",
+      "kind": "turn",
+      "status": "returned",
+      "durationMs": 3302.645583000005,
+      "usage": {
+        "prompt_tokens": 1780,
+        "completion_tokens": 117,
+        "total_tokens": 1897
+      },
+      "recordedAt": "2026-10-25T13:46:44.157Z",
+      "seq": 20
+    },
+    {
+      "type": "assistant",
+      "scope": "root",
+      "turnId": "turn-3",
+      "requestId": "request-3",
+      "text": "候选结果主要涉及导出，我需要另外查找离线/编辑相关页面。",
+      "calls": [
+        {
+          "id": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+          "name": "search_documents",
+          "args": {
+            "query": "离线 免费版 编辑"
+          }
+        },
+        {
+          "id": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+          "name": "search_documents",
+          "args": {
+            "query": "offline mode free plan read-only"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 1780,
+        "completion_tokens": 117,
+        "total_tokens": 1897,
+        "prompt_tokens_details": {
+          "cached_tokens": 1280
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 24
+        },
+        "cost": 0,
+        "opencode": {
+          "billing_source": "go",
+          "list_cost": 0.00014904,
+          "allowance": 0.00011178,
+          "tokens": {
+            "input": 500,
+            "output": 117,
+            "reasoning": 24,
+            "cache_read": 1280,
+            "cache_write_5m": 0,
+            "cache_write_1h": 0
+          }
+        }
+      },
+      "recordedAt": "2026-10-25T13:46:44.157Z",
+      "seq": 21
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+      "requestId": "request-3",
+      "name": "search_documents",
+      "args": {
+        "query": "离线 免费版 编辑"
+      },
+      "key": "{\"args\":{\"query\":\"离线 免费版 编辑\"},\"name\":\"search_documents\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:44.158Z",
+      "seq": 22
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:44.159Z",
+      "seq": 23
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+      "requestId": "request-3",
+      "name": "search_documents",
+      "scope": "root",
+      "durationMs": 0.7269579999992857,
+      "receipt": {
+        "id": "call_00_hQmL2AQgNWLMcCpvnb7f4720",
+        "name": "search_documents",
+        "args": {
+          "query": "离线 免费版 编辑"
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "ok",
+          "candidates": [
+            {
+              "documentId": "manual-a-v1",
+              "version": "1.0",
+              "page": 3,
+              "score": 5,
+              "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。"
+            },
+            {
+              "documentId": "manual-b-v2",
+              "version": "2.0",
+              "page": 3,
+              "score": 5,
+              "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。"
+            },
+            {
+              "documentId": "manual-a-v1",
+              "version": "1.0",
+              "page": 4,
+              "score": 3,
+              "excerpt": "免费版每次最多导出 1000 条记录。"
+            },
+            {
+              "documentId": "manual-b-v2",
+              "version": "2.0",
+              "page": 4,
+              "score": 3,
+              "excerpt": "免费版每次最多导出 5000 条记录。"
+            },
+            {
+              "documentId": "manual-a-v1",
+              "version": "1.0",
+              "page": 1,
+              "score": 1,
+              "excerpt": "编辑后请点击保存。"
+            },
+            {
+              "documentId": "manual-b-v2",
+              "version": "2.0",
+              "page": 1,
+              "score": 1,
+              "excerpt": "编辑后自动保存。"
+            }
+          ]
+        },
+        "originalArgs": {
+          "query": "离线 免费版 编辑"
+        }
+      },
+      "result": {
+        "status": "ok",
+        "candidates": [
+          {
+            "documentId": "manual-a-v1",
+            "version": "1.0",
+            "page": 3,
+            "score": 5,
+            "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。"
+          },
+          {
+            "documentId": "manual-b-v2",
+            "version": "2.0",
+            "page": 3,
+            "score": 5,
+            "excerpt": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。"
+          },
+          {
+            "documentId": "manual-a-v1",
+            "version": "1.0",
+            "page": 4,
+            "score": 3,
+            "excerpt": "免费版每次最多导出 1000 条记录。"
+          },
+          {
+            "documentId": "manual-b-v2",
+            "version": "2.0",
+            "page": 4,
+            "score": 3,
+            "excerpt": "免费版每次最多导出 5000 条记录。"
+          },
+          {
+            "documentId": "manual-a-v1",
+            "version": "1.0",
+            "page": 1,
+            "score": 1,
+            "excerpt": "编辑后请点击保存。"
+          },
+          {
+            "documentId": "manual-b-v2",
+            "version": "2.0",
+            "page": 1,
+            "score": 1,
+            "excerpt": "编辑后自动保存。"
+          }
+        ],
+        "toolName": "search_documents"
+      },
+      "recordedAt": "2026-10-25T13:46:44.159Z",
+      "seq": 24
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+      "requestId": "request-3",
+      "name": "search_documents",
+      "args": {
+        "query": "offline mode free plan read-only"
+      },
+      "key": "{\"args\":{\"query\":\"offline mode free plan read-only\"},\"name\":\"search_documents\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:44.160Z",
+      "seq": 25
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:44.161Z",
+      "seq": 26
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+      "requestId": "request-3",
+      "name": "search_documents",
+      "scope": "root",
+      "durationMs": 0.45745800000440795,
+      "receipt": {
+        "id": "call_01_en5Dw6Xjp9YyA3nqZS9U6633",
+        "name": "search_documents",
+        "args": {
+          "query": "offline mode free plan read-only"
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "ok",
+          "candidates": []
+        },
+        "originalArgs": {
+          "query": "offline mode free plan read-only"
+        }
+      },
+      "result": {
+        "status": "ok",
+        "candidates": [],
+        "toolName": "search_documents"
+      },
+      "recordedAt": "2026-10-25T13:46:44.161Z",
+      "seq": 27
+    },
+    {
+      "type": "context-projection",
+      "charCount": 3591,
+      "externalizedSourceIds": [],
+      "summaryIds": [],
+      "recordedAt": "2026-10-25T13:46:44.162Z",
+      "seq": 28
+    },
+    {
+      "type": "model-request",
+      "requestId": "request-4",
+      "kind": "turn",
+      "turnId": "turn-4",
+      "generation": 1,
+      "recordedAt": "2026-10-25T13:46:44.163Z",
+      "seq": 29
+    },
+    {
+      "type": "model-result",
+      "requestId": "request-4",
+      "kind": "turn",
+      "status": "returned",
+      "durationMs": 2875.715541999998,
+      "usage": {
+        "prompt_tokens": 2150,
+        "completion_tokens": 216,
+        "total_tokens": 2366
+      },
+      "recordedAt": "2026-10-25T13:46:47.040Z",
+      "seq": 30
+    },
+    {
+      "type": "assistant",
+      "scope": "root",
+      "turnId": "turn-4",
+      "requestId": "request-4",
+      "text": "",
+      "calls": [
+        {
+          "id": "call_00_Y0puVrS2S3HH8EStW0l28705",
+          "name": "read_page",
+          "args": {
+            "documentId": "manual-a-v1",
+            "page": 3
+          }
+        },
+        {
+          "id": "call_01_hxVA25oSP9dkd4urNS940577",
+          "name": "read_page",
+          "args": {
+            "documentId": "manual-b-v2",
+            "page": 3
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 2150,
+        "completion_tokens": 216,
+        "total_tokens": 2366,
+        "prompt_tokens_details": {
+          "cached_tokens": 1664
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 110
+        },
+        "cost": 0,
+        "opencode": {
+          "billing_source": "go",
+          "list_cost": 0.00020749,
+          "allowance": 0.00015562,
+          "tokens": {
+            "input": 486,
+            "output": 216,
+            "reasoning": 110,
+            "cache_read": 1664,
+            "cache_write_5m": 0,
+            "cache_write_1h": 0
+          }
+        }
+      },
+      "recordedAt": "2026-10-25T13:46:47.041Z",
+      "seq": 31
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_00_Y0puVrS2S3HH8EStW0l28705",
+      "requestId": "request-4",
+      "name": "read_page",
+      "args": {
+        "documentId": "manual-a-v1",
+        "page": 3
+      },
+      "key": "{\"args\":{\"documentId\":\"manual-a-v1\",\"page\":3},\"name\":\"read_page\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:47.042Z",
+      "seq": 32
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_00_Y0puVrS2S3HH8EStW0l28705",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:47.045Z",
+      "seq": 33
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_00_Y0puVrS2S3HH8EStW0l28705",
+      "requestId": "request-4",
+      "name": "read_page",
+      "scope": "root",
+      "durationMs": 2.7165840000016033,
+      "receipt": {
+        "id": "call_00_Y0puVrS2S3HH8EStW0l28705",
+        "name": "read_page",
+        "args": {
+          "documentId": "manual-a-v1",
+          "page": 3
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "ok",
+          "sourceId": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+          "source": {
+            "id": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+            "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_00_Y0puVrS2S3HH8EStW0l28705",
+            "documentId": "manual-a-v1",
+            "title": "产品手册 A",
+            "version": "1.0",
+            "page": 3,
+            "hash": "e9ff60299460e1ae135d84e943db057532a01bce9db5c79370069192f9717608",
+            "representation": "plain-text"
+          },
+          "text": "免费版可离线查看已缓存页面，编辑需要联网。"
+        },
+        "originalArgs": {
+          "documentId": "manual-a-v1",
+          "page": 3
+        }
+      },
+      "result": {
+        "status": "ok",
+        "sourceId": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+        "source": {
+          "id": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+          "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_00_Y0puVrS2S3HH8EStW0l28705",
+          "documentId": "manual-a-v1",
+          "title": "产品手册 A",
+          "version": "1.0",
+          "page": 3,
+          "hash": "e9ff60299460e1ae135d84e943db057532a01bce9db5c79370069192f9717608",
+          "representation": "plain-text"
+        },
+        "text": "免费版可离线查看已缓存页面，编辑需要联网。",
+        "toolName": "read_page"
+      },
+      "recordedAt": "2026-10-25T13:46:47.046Z",
+      "seq": 34
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_01_hxVA25oSP9dkd4urNS940577",
+      "requestId": "request-4",
+      "name": "read_page",
+      "args": {
+        "documentId": "manual-b-v2",
+        "page": 3
+      },
+      "key": "{\"args\":{\"documentId\":\"manual-b-v2\",\"page\":3},\"name\":\"read_page\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:47.047Z",
+      "seq": 35
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_01_hxVA25oSP9dkd4urNS940577",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:47.048Z",
+      "seq": 36
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_01_hxVA25oSP9dkd4urNS940577",
+      "requestId": "request-4",
+      "name": "read_page",
+      "scope": "root",
+      "durationMs": 1.2948340000002645,
+      "receipt": {
+        "id": "call_01_hxVA25oSP9dkd4urNS940577",
+        "name": "read_page",
+        "args": {
+          "documentId": "manual-b-v2",
+          "page": 3
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "ok",
+          "sourceId": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+          "source": {
+            "id": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+            "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_01_hxVA25oSP9dkd4urNS940577",
+            "documentId": "manual-b-v2",
+            "title": "产品手册 B",
+            "version": "2.0",
+            "page": 3,
+            "hash": "181216965b2d51038041ca42633c245025f0355b42fa38089eaf48bf95a056f8",
+            "representation": "plain-text"
+          },
+          "text": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。"
+        },
+        "originalArgs": {
+          "documentId": "manual-b-v2",
+          "page": 3
+        }
+      },
+      "result": {
+        "status": "ok",
+        "sourceId": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+        "source": {
+          "id": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+          "readId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6:call_01_hxVA25oSP9dkd4urNS940577",
+          "documentId": "manual-b-v2",
+          "title": "产品手册 B",
+          "version": "2.0",
+          "page": 3,
+          "hash": "181216965b2d51038041ca42633c245025f0355b42fa38089eaf48bf95a056f8",
+          "representation": "plain-text"
+        },
+        "text": "免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。",
+        "toolName": "read_page"
+      },
+      "recordedAt": "2026-10-25T13:46:47.048Z",
+      "seq": 37
+    },
+    {
+      "type": "context-projection",
+      "charCount": 5032,
+      "externalizedSourceIds": [],
+      "summaryIds": [],
+      "recordedAt": "2026-10-25T13:46:47.050Z",
+      "seq": 38
+    },
+    {
+      "type": "model-request",
+      "requestId": "request-5",
+      "kind": "turn",
+      "turnId": "turn-5",
+      "generation": 1,
+      "recordedAt": "2026-10-25T13:46:47.051Z",
+      "seq": 39
+    },
+    {
+      "type": "model-result",
+      "requestId": "request-5",
+      "kind": "turn",
+      "status": "returned",
+      "durationMs": 6735.220333000005,
+      "usage": {
+        "prompt_tokens": 2755,
+        "completion_tokens": 942,
+        "total_tokens": 3697
+      },
+      "recordedAt": "2026-10-25T13:46:53.788Z",
+      "seq": 40
+    },
+    {
+      "type": "assistant",
+      "scope": "root",
+      "turnId": "turn-5",
+      "requestId": "request-5",
+      "text": "已读取两本手册对应页，现在保存报告。",
+      "calls": [
+        {
+          "id": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+          "name": "publish_report",
+          "args": {
+            "body": "# 离线编辑能力对比：手册 A 1.0 vs 手册 B 2.0\n\n## 结论（针对免费版）\n两版免费版一致：**离线状态下不能编辑，只能查看已缓存页面；编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 需要联网，不能离线编辑 [S1] | 需要联网，不能离线编辑 [S2] |\n| 离线编辑的版本条件 | 该页未提及任何可离线编辑的版本（缺口，不等于不存在） | 仅企业版支持离线编辑 [S2] |\n\n## 逐条出处\n- [S1] 产品手册 A，版本 1.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。」\n- [S2] 产品手册 B，版本 2.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。」\n\n## 条件与适用范围说明\n1. 「离线查看」仅限**已缓存页面**，两版手册均未说明未缓存页面的离线行为。\n2. B 2.0 明确给出了离线编辑的例外条件：**企业版**。A 1.0 第 3 页只描述了免费版，未说明付费/企业版是否可离线编辑。\n3. 本结论只覆盖手册第 3 页所述的离线/编辑条件；免费版导出配额（A 为 1000 条/次、B 为 5000 条/次）属于另一问题，未纳入本对比。\n\n## 未解决的问题（手册未覆盖）\n1. A 1.0 的企业版或其他付费版本能否离线编辑？该页未说明。\n2. 两版手册都未说明离线查看时已缓存页面的存储/过期规则。\n3. 未缓存页面在离线时的具体表现（报错、只读占位等）未见描述。\n4. 离线编辑是否会自动排队同步（B 手册第 1 页提到「编辑后自动保存」）未见与离线场景的关联说明，故不作推断。\n",
+            "sourceIds": [
+              "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+              "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a"
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 2755,
+        "completion_tokens": 942,
+        "total_tokens": 3697,
+        "prompt_tokens_details": {
+          "cached_tokens": 2048
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 279
+        },
+        "cost": 0,
+        "opencode": {
+          "billing_source": "go",
+          "list_cost": 0.00067739,
+          "allowance": 0.00050805,
+          "tokens": {
+            "input": 707,
+            "output": 942,
+            "reasoning": 279,
+            "cache_read": 2048,
+            "cache_write_5m": 0,
+            "cache_write_1h": 0
+          }
+        }
+      },
+      "recordedAt": "2026-10-25T13:46:53.790Z",
+      "seq": 41
+    },
+    {
+      "type": "tool-start",
+      "callId": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+      "requestId": "request-5",
+      "name": "publish_report",
+      "args": {
+        "body": "# 离线编辑能力对比：手册 A 1.0 vs 手册 B 2.0\n\n## 结论（针对免费版）\n两版免费版一致：**离线状态下不能编辑，只能查看已缓存页面；编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 需要联网，不能离线编辑 [S1] | 需要联网，不能离线编辑 [S2] |\n| 离线编辑的版本条件 | 该页未提及任何可离线编辑的版本（缺口，不等于不存在） | 仅企业版支持离线编辑 [S2] |\n\n## 逐条出处\n- [S1] 产品手册 A，版本 1.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。」\n- [S2] 产品手册 B，版本 2.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。」\n\n## 条件与适用范围说明\n1. 「离线查看」仅限**已缓存页面**，两版手册均未说明未缓存页面的离线行为。\n2. B 2.0 明确给出了离线编辑的例外条件：**企业版**。A 1.0 第 3 页只描述了免费版，未说明付费/企业版是否可离线编辑。\n3. 本结论只覆盖手册第 3 页所述的离线/编辑条件；免费版导出配额（A 为 1000 条/次、B 为 5000 条/次）属于另一问题，未纳入本对比。\n\n## 未解决的问题（手册未覆盖）\n1. A 1.0 的企业版或其他付费版本能否离线编辑？该页未说明。\n2. 两版手册都未说明离线查看时已缓存页面的存储/过期规则。\n3. 未缓存页面在离线时的具体表现（报错、只读占位等）未见描述。\n4. 离线编辑是否会自动排队同步（B 手册第 1 页提到「编辑后自动保存」）未见与离线场景的关联说明，故不作推断。\n",
+        "sourceIds": [
+          "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+          "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a"
+        ]
+      },
+      "key": "{\"args\":{\"body\":\"# 离线编辑能力对比：手册 A 1.0 vs 手册 B 2.0\\n\\n## 结论（针对免费版）\\n两版免费版一致：**离线状态下不能编辑，只能查看已缓存页面；编辑需要联网。**\\n\\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\\n|---|---|---|\\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\\n| 免费版离线编辑 | 需要联网，不能离线编辑 [S1] | 需要联网，不能离线编辑 [S2] |\\n| 离线编辑的版本条件 | 该页未提及任何可离线编辑的版本（缺口，不等于不存在） | 仅企业版支持离线编辑 [S2] |\\n\\n## 逐条出处\\n- [S1] 产品手册 A，版本 1.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。」\\n- [S2] 产品手册 B，版本 2.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。」\\n\\n## 条件与适用范围说明\\n1. 「离线查看」仅限**已缓存页面**，两版手册均未说明未缓存页面的离线行为。\\n2. B 2.0 明确给出了离线编辑的例外条件：**企业版**。A 1.0 第 3 页只描述了免费版，未说明付费/企业版是否可离线编辑。\\n3. 本结论只覆盖手册第 3 页所述的离线/编辑条件；免费版导出配额（A 为 1000 条/次、B 为 5000 条/次）属于另一问题，未纳入本对比。\\n\\n## 未解决的问题（手册未覆盖）\\n1. A 1.0 的企业版或其他付费版本能否离线编辑？该页未说明。\\n2. 两版手册都未说明离线查看时已缓存页面的存储/过期规则。\\n3. 未缓存页面在离线时的具体表现（报错、只读占位等）未见描述。\\n4. 离线编辑是否会自动排队同步（B 手册第 1 页提到「编辑后自动保存」）未见与离线场景的关联说明，故不作推断。\\n\",\"sourceIds\":[\"source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f\",\"source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a\"]},\"name\":\"publish_report\",\"scope\":\"root\"}",
+      "scope": "root",
+      "recordedAt": "2026-10-25T13:46:53.793Z",
+      "seq": 42
+    },
+    {
+      "type": "hook-observation",
+      "callId": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+      "status": "completed",
+      "dispatched": true,
+      "recordedAt": "2026-10-25T13:46:53.806Z",
+      "seq": 43
+    },
+    {
+      "type": "tool-result",
+      "callId": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+      "requestId": "request-5",
+      "name": "publish_report",
+      "scope": "root",
+      "durationMs": 12.590374999999767,
+      "receipt": {
+        "id": "call_00_cuXcFveLAq5fBaZx1KkR7529",
+        "name": "publish_report",
+        "args": {
+          "body": "# 离线编辑能力对比：手册 A 1.0 vs 手册 B 2.0\n\n## 结论（针对免费版）\n两版免费版一致：**离线状态下不能编辑，只能查看已缓存页面；编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 需要联网，不能离线编辑 [S1] | 需要联网，不能离线编辑 [S2] |\n| 离线编辑的版本条件 | 该页未提及任何可离线编辑的版本（缺口，不等于不存在） | 仅企业版支持离线编辑 [S2] |\n\n## 逐条出处\n- [S1] 产品手册 A，版本 1.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。」\n- [S2] 产品手册 B，版本 2.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。」\n\n## 条件与适用范围说明\n1. 「离线查看」仅限**已缓存页面**，两版手册均未说明未缓存页面的离线行为。\n2. B 2.0 明确给出了离线编辑的例外条件：**企业版**。A 1.0 第 3 页只描述了免费版，未说明付费/企业版是否可离线编辑。\n3. 本结论只覆盖手册第 3 页所述的离线/编辑条件；免费版导出配额（A 为 1000 条/次、B 为 5000 条/次）属于另一问题，未纳入本对比。\n\n## 未解决的问题（手册未覆盖）\n1. A 1.0 的企业版或其他付费版本能否离线编辑？该页未说明。\n2. 两版手册都未说明离线查看时已缓存页面的存储/过期规则。\n3. 未缓存页面在离线时的具体表现（报错、只读占位等）未见描述。\n4. 离线编辑是否会自动排队同步（B 手册第 1 页提到「编辑后自动保存」）未见与离线场景的关联说明，故不作推断。\n",
+          "sourceIds": [
+            "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+            "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a"
+          ]
+        },
+        "dispatched": true,
+        "status": "completed",
+        "output": {
+          "status": "ok",
+          "publicationId": "comparison",
+          "revision": 1,
+          "artifactIds": [
+            "report-md",
+            "report-html"
+          ]
+        },
+        "originalArgs": {
+          "body": "# 离线编辑能力对比：手册 A 1.0 vs 手册 B 2.0\n\n## 结论（针对免费版）\n两版免费版一致：**离线状态下不能编辑，只能查看已缓存页面；编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 需要联网，不能离线编辑 [S1] | 需要联网，不能离线编辑 [S2] |\n| 离线编辑的版本条件 | 该页未提及任何可离线编辑的版本（缺口，不等于不存在） | 仅企业版支持离线编辑 [S2] |\n\n## 逐条出处\n- [S1] 产品手册 A，版本 1.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。」\n- [S2] 产品手册 B，版本 2.0，第 3 页（原文）：「免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。」\n\n## 条件与适用范围说明\n1. 「离线查看」仅限**已缓存页面**，两版手册均未说明未缓存页面的离线行为。\n2. B 2.0 明确给出了离线编辑的例外条件：**企业版**。A 1.0 第 3 页只描述了免费版，未说明付费/企业版是否可离线编辑。\n3. 本结论只覆盖手册第 3 页所述的离线/编辑条件；免费版导出配额（A 为 1000 条/次、B 为 5000 条/次）属于另一问题，未纳入本对比。\n\n## 未解决的问题（手册未覆盖）\n1. A 1.0 的企业版或其他付费版本能否离线编辑？该页未说明。\n2. 两版手册都未说明离线查看时已缓存页面的存储/过期规则。\n3. 未缓存页面在离线时的具体表现（报错、只读占位等）未见描述。\n4. 离线编辑是否会自动排队同步（B 手册第 1 页提到「编辑后自动保存」）未见与离线场景的关联说明，故不作推断。\n",
+          "sourceIds": [
+            "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+            "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a"
+          ]
+        }
+      },
+      "result": {
+        "status": "ok",
+        "publicationId": "comparison",
+        "revision": 1,
+        "artifactIds": [
+          "report-md",
+          "report-html"
+        ],
+        "toolName": "publish_report"
+      },
+      "recordedAt": "2026-10-25T13:46:53.806Z",
+      "seq": 44
+    },
+    {
+      "type": "context-projection",
+      "charCount": 6383,
+      "externalizedSourceIds": [],
+      "summaryIds": [],
+      "recordedAt": "2026-10-25T13:46:53.808Z",
+      "seq": 45
+    },
+    {
+      "type": "model-request",
+      "requestId": "request-6",
+      "kind": "turn",
+      "turnId": "turn-6",
+      "generation": 1,
+      "recordedAt": "2026-10-25T13:46:53.810Z",
+      "seq": 46
+    },
+    {
+      "type": "model-result",
+      "requestId": "request-6",
+      "kind": "turn",
+      "status": "returned",
+      "durationMs": 3827.0896250000005,
+      "usage": {
+        "prompt_tokens": 3466,
+        "completion_tokens": 467,
+        "total_tokens": 3933
+      },
+      "recordedAt": "2026-10-25T13:46:57.638Z",
+      "seq": 47
+    },
+    {
+      "type": "assistant",
+      "scope": "root",
+      "turnId": "turn-6",
+      "requestId": "request-6",
+      "text": "**结论：A 1.0 和 B 2.0 的免费版都不能离线编辑，只能离线查看已缓存页面，编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 不可以，编辑需要联网 [S1] | 不可以，编辑需要联网 [S2] |\n| 哪个版本能离线编辑 | 该页未提及（缺口，不等于不存在） | 仅**企业版**支持离线编辑 [S2] |\n\n**出处（原文，均已读取原页）**\n- [S1] 产品手册 A v1.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。”\n- [S2] 产品手册 B v2.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。”\n\n**条件要点**\n1. 离线查看仅限“已缓存页面”，两版手册都未说明未缓存页面在离线时如何表现。\n2. B 2.0 给出了离线编辑的唯一例外：企业版。A 1.0 该页只写了免费版，没有说明付费版或企业版是否可以离线编辑。\n3. 两版免费版的导出配额不同：A 为 1000 条/次，B 为 5000 条/次。这属于另一个问题，我没有把它并入本次离线对比。\n\n**未解决的问题**：A 1.0 的企业版是否支持离线编辑；离线缓存的有效期与清理规则；未缓存页面离线时的具体表现；B 手册第 1 页的“编辑后自动保存”在离线场景下如何生效（不做推断）。\n\n报告已保存为可下载文件：`report-md` 和 `report-html`（publicationId: `comparison`，revision 1）。你可以稍后直接打开这两个文件；引用使用上方的 [S1] 和 [S2] 对应原页读取记录。",
+      "calls": [],
+      "usage": {
+        "prompt_tokens": 3466,
+        "completion_tokens": 467,
+        "total_tokens": 3933,
+        "prompt_tokens_details": {
+          "cached_tokens": 2688
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "cost": 0,
+        "opencode": {
+          "billing_source": "go",
+          "list_cost": 0.00040496,
+          "allowance": 0.00030372,
+          "tokens": {
+            "input": 778,
+            "output": 467,
+            "reasoning": 0,
+            "cache_read": 2688,
+            "cache_write_5m": 0,
+            "cache_write_1h": 0
+          }
+        }
+      },
+      "recordedAt": "2026-10-25T13:46:57.641Z",
+      "seq": 48
+    },
+    {
+      "type": "completed",
+      "text": "**结论：A 1.0 和 B 2.0 的免费版都不能离线编辑，只能离线查看已缓存页面，编辑需要联网。**\n\n| 问题 | 手册 A 1.0 | 手册 B 2.0 |\n|---|---|---|\n| 免费版离线查看已缓存页面 | 可以 [S1] | 可以 [S2] |\n| 免费版离线编辑 | 不可以，编辑需要联网 [S1] | 不可以，编辑需要联网 [S2] |\n| 哪个版本能离线编辑 | 该页未提及（缺口，不等于不存在） | 仅**企业版**支持离线编辑 [S2] |\n\n**出处（原文，均已读取原页）**\n- [S1] 产品手册 A v1.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。”\n- [S2] 产品手册 B v2.0，第 3 页：“免费版可离线查看已缓存页面，编辑需要联网。企业版支持离线编辑。”\n\n**条件要点**\n1. 离线查看仅限“已缓存页面”，两版手册都未说明未缓存页面在离线时如何表现。\n2. B 2.0 给出了离线编辑的唯一例外：企业版。A 1.0 该页只写了免费版，没有说明付费版或企业版是否可以离线编辑。\n3. 两版免费版的导出配额不同：A 为 1000 条/次，B 为 5000 条/次。这属于另一个问题，我没有把它并入本次离线对比。\n\n**未解决的问题**：A 1.0 的企业版是否支持离线编辑；离线缓存的有效期与清理规则；未缓存页面离线时的具体表现；B 手册第 1 页的“编辑后自动保存”在离线场景下如何生效（不做推断）。\n\n报告已保存为可下载文件：`report-md` 和 `report-html`（publicationId: `comparison`，revision 1）。你可以稍后直接打开这两个文件；引用使用上方的 [S1] 和 [S2] 对应原页读取记录。",
+      "budget": {
+        "modelRequests": {
+          "limit": 24,
+          "used": 6,
+          "remaining": 18
+        },
+        "toolCalls": {
+          "limit": 80,
+          "used": 8,
+          "remaining": 72
+        }
+      },
+      "recordedAt": "2026-10-25T13:46:57.642Z",
+      "seq": 49
+    }
+  ],
+  "delivery": {
+    "runId": "5bfc01db-85b3-43fc-b15c-a6af1d4529d6",
+    "snapshotSeq": 49,
+    "evaluatedAt": "2026-10-25T13:46:57.659Z",
+    "execution": {
+      "mode": "chat-completions",
+      "note": "Local HTTP checks of existing durable files, not an atomic snapshot across routes. No new model call, comparison case or semantic review was performed."
+    },
+    "checks": [
+      {
+        "kind": "report-list",
+        "status": "passed",
+        "evidence": {
+          "method": "GET",
+          "route": "/api/publications",
+          "httpStatus": 200,
+          "bytes": 3859,
+          "count": 1
+        }
+      },
+      {
+        "kind": "report",
+        "id": "comparison",
+        "status": "passed",
+        "evidence": {
+          "method": "GET",
+          "route": "/api/publications/comparison?revision=1",
+          "httpStatus": 200,
+          "bytes": 3857,
+          "revision": 1,
+          "bodyChars": 781
+        }
+      },
+      {
+        "kind": "original-window",
+        "id": "source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+        "status": "passed",
+        "evidence": {
+          "method": "GET",
+          "route": "/api/sources/source-e1132e3caf2d70919b7ce5095806cafd8e0d90c731be3232d2f925b384b3e86f",
+          "httpStatus": 200,
+          "bytes": 415,
+          "citation": 1,
+          "sha256": "e9ff60299460e1ae135d84e943db057532a01bce9db5c79370069192f9717608",
+          "documentId": "manual-a-v1",
+          "version": "1.0",
+          "page": 3
+        }
+      },
+      {
+        "kind": "original-window",
+        "id": "source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+        "status": "passed",
+        "evidence": {
+          "method": "GET",
+          "route": "/api/sources/source-5b85c38c7d8336b09c5f0aaca3486947c30515abf6e94ad88e4343f8a6eecf4a",
+          "httpStatus": 200,
+          "bytes": 445,
+          "citation": 2,
+          "sha256": "181216965b2d51038041ca42633c245025f0355b42fa38089eaf48bf95a056f8",
+          "documentId": "manual-b-v2",
+          "version": "2.0",
+          "page": 3
+        }
+      },
+      {
+        "kind": "attachment-download",
+        "id": "report-md",
+        "status": "passed",
+        "evidence": {
+          "method": "GET",
+          "route": "/api/artifacts/report-md",
+          "httpStatus": 200,
+          "bytes": 1823,
+          "sha256": "163a0490439d4e4b5d78f22eac8cf72500f89613b3bf4b0fdc1a349e6b4898a6",
+          "registeredSha256": "163a0490439d4e4b5d78f22eac8cf72500f89613b3bf4b0fdc1a349e6b4898a6",
+          "registeredBytes": 1823
+        }
+      },
+      {
+        "kind": "attachment-download",
+        "id": "report-html",
+        "status": "passed",
+        "evidence": {
+          "method": "GET",
+          "route": "/api/artifacts/report-html",
+          "httpStatus": 200,
+          "bytes": 2002,
+          "sha256": "807dc1ddf02ba66df9159dd7d25a9bd1e626bca7d8ad7dec6b066c0dc11da739",
+          "registeredSha256": "807dc1ddf02ba66df9159dd7d25a9bd1e626bca7d8ad7dec6b066c0dc11da739",
+          "registeredBytes": 2002
+        }
+      }
+    ],
+    "semantic": {
+      "status": "unreviewed",
+      "questions": [
+        "逐项对照原窗口：正文结论是否得到原文支持，而不是仅有可打开的引用？",
+        "版本、页范围、套餐及离线条件等关键限定是否保留，是否存在反例？",
+        "正文与计算是否回答了用户问题；未取得的材料是否被如实说明？"
+      ]
+    },
+    "overallQuality": "unreviewed"
+  },
+  "contentReview": {
+    "coreAnswer": "matches-checkpoints",
+    "notes": [],
+    "method": "AI-assisted comparison with recorded source pages",
+    "authorReviewed": false
+  }
+}

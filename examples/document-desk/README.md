@@ -13,4 +13,4 @@ node --test examples/document-desk/test/desk.test.mjs
 
 需要演示恢复时，用 `--state .runs/recovery` 选一个新目录，先加 `--interrupt-after-save` 运行，再用同一目录普通运行。首次以 75 退出，第二次补齐回执，不创建第二份报告。
 
-要求 Node 26.11.1；一个状态目录只由一个进程写入。不使用真实模型或业务数据。
+支持 Node `>=26.11.1 <27`，固定复现版本为 `26.11.1`；一个状态目录只由一个进程写入。不使用真实模型或业务数据。

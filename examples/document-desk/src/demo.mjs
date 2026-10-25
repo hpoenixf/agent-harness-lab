@@ -1,7 +1,8 @@
 import { resolve } from 'node:path';
 import { openDesk, scriptedGateway } from './desk.mjs';
+import { assertSupportedNode } from '../../../scripts/node-version.mjs';
 
-if (process.versions.node !== '26.11.1') throw new Error('Use the repository-pinned Node 26.11.1');
+assertSupportedNode();
 const stateIndex = process.argv.indexOf('--state');
 const directory = resolve(stateIndex >= 0 ? process.argv[stateIndex + 1] : '.runs/demo');
 const desk = await openDesk(directory);

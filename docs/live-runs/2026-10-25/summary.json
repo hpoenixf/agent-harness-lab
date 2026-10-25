@@ -1,0 +1,141 @@
+{
+  "date": "2026-10-25",
+  "models": [
+    "deepseek-v4.1-flash",
+    "glm-5.3-flash"
+  ],
+  "tasks": {
+    "export-history": "请比较 A 1.0 和 B 2.0 的导出能力。我想知道可导出格式，以及导出文件是否保留操作历史。请说明依据的文档，并保存一份我稍后可以打开的报告和可下载附件。",
+    "free-offline-editing": "对比 A 1.0 和 B 2.0，免费版在离线状态能不能编辑？如果只能查看或需要联网，请说清楚各版本条件，附上出处并保存可下载报告，方便我稍后打开。",
+    "export-limit-change": "导出数量限制从 A 1.0 到 B 2.0 怎么变？请算每次最多导出条数增加了多少、相对原来是几倍。说明依据并保存报告和附件供我稍后打开。",
+    "cited-downloadable-report": "我想稍后复查 A 1.0 和 B 2.0 的差异。请制作一份有出处的对比报告，列出关键差异，并提供我能实际下载和稍后打开的附件。"
+  },
+  "results": [
+    {
+      "model": "deepseek-v4.1-flash",
+      "task": "export-history",
+      "requests": 7,
+      "toolCalls": 11,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "matches-checkpoints",
+        "notes": [],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    },
+    {
+      "model": "deepseek-v4.1-flash",
+      "task": "free-offline-editing",
+      "requests": 6,
+      "toolCalls": 8,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "matches-checkpoints",
+        "notes": [],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    },
+    {
+      "model": "deepseek-v4.1-flash",
+      "task": "export-limit-change",
+      "requests": 6,
+      "toolCalls": 7,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "matches-checkpoints",
+        "notes": [],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    },
+    {
+      "model": "deepseek-v4.1-flash",
+      "task": "cited-downloadable-report",
+      "requests": 8,
+      "toolCalls": 25,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "matches-checkpoints",
+        "notes": [],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    },
+    {
+      "model": "glm-5.3-flash",
+      "task": "export-history",
+      "requests": 4,
+      "toolCalls": 5,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "matches-checkpoints",
+        "notes": [],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    },
+    {
+      "model": "glm-5.3-flash",
+      "task": "free-offline-editing",
+      "requests": 4,
+      "toolCalls": 5,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "matches-checkpoints",
+        "notes": [
+          "核心免费版条件正确；“未缓存页面离线时不可见”比原文承诺更强，原页只说明可查看已缓存页面。"
+        ],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    },
+    {
+      "model": "glm-5.3-flash",
+      "task": "export-limit-change",
+      "requests": 6,
+      "toolCalls": 7,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "matches-checkpoints",
+        "notes": [],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    },
+    {
+      "model": "glm-5.3-flash",
+      "task": "cited-downloadable-report",
+      "requests": 5,
+      "toolCalls": 8,
+      "status": "completed",
+      "deliveryChecks": "passed",
+      "contentReview": {
+        "coreAnswer": "needs-revision",
+        "notes": [
+          "只读取两版第2、4页，保存报告限定了这两类比较；最终回答却称“完整对比表格”，无法代表全书条款均已比较。",
+          "报告同时保留A“仅支持Markdown”的原文，又把A是否支持PDF描述为未提及，表达相互冲突。"
+        ],
+        "method": "AI-assisted comparison with recorded source pages",
+        "authorReviewed": false
+      }
+    }
+  ],
+  "firstBatch": {
+    "runs": 8,
+    "status": "failed-before-tools",
+    "requestsPerRun": 1,
+    "toolCalls": 0,
+    "observedHttpStatus": null,
+    "diagnosis": "缺少服务要求的会话头由同路由诊断与补头后的独立成功响应支持；原失败批次未记录HTTP状态，不将推断写成直接观测。"
+  },
+  "limits": "每模型每任务单次样本；自动交付检查与辅助内容核对分别记录，不能推导普遍准确率。"
+}

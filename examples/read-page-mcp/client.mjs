@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import { assertSupportedNode } from "../../scripts/node-version.mjs";
 
-assert.equal(process.version, "v26.11.1", "Use the repository's pinned Node version.");
+assertSupportedNode();
 const client = new Client({ name: "manual-demo", version: "1.0.0" }, {
   versionNegotiation: { mode: { pin: "2026-07-28" } }
 });
