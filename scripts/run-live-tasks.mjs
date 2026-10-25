@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { mkdir, readdir, writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createChatGateway } from '../examples/research-workbench/src/gateway.mjs';
@@ -112,7 +112,7 @@ function parseArgs(argv) {
 export async function runLiveTasks({ env = process.env, stateRoot, taskIds = LIVE_TASKS.map(task => task.id), log = console.log } = {}) {
   const { HARNESS_BASE_URL: baseUrl, HARNESS_MODEL: model, HARNESS_API_KEY: apiKey = '' } = env;
   if (!baseUrl || !model) throw new Error('Set HARNESS_BASE_URL and HARNESS_MODEL in the process environment.');
-  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(model)) throw new Error('HARNESS_MODEL has an invalid identifier.');
+  const modelDirectory = 'model-' + createHash('sha256').update(model).digest('hex');
   const selectedTasks = taskIds.map(id => LIVE_TASKS.find(task => task.id === id));
   if (!selectedTasks.length || selectedTasks.some(task => !task) || new Set(taskIds).size !== taskIds.length) {
     throw new Error('Select one or more distinct task IDs listed by --help.');
@@ -126,8 +126,8 @@ export async function runLiveTasks({ env = process.env, stateRoot, taskIds = LIV
   const results = [];
 
   for (const task of selectedTasks) {
-    const runDirectory = join(baseDirectory, model, task.id, 'run');
-    await mkdir(join(baseDirectory, model, task.id), { recursive: true });
+    const runDirectory = join(baseDirectory, modelDirectory, task.id, 'run');
+    await mkdir(join(baseDirectory, modelDirectory, task.id), { recursive: true });
     await mkdir(runDirectory);
     const requests = [];
     const sessionId = addOpenCodeHeaders ? randomUUID() : undefined;
@@ -195,7 +195,7 @@ export async function runLiveTasks({ env = process.env, stateRoot, taskIds = LIV
       executionEvents: snapshot?.events ?? [],
       delivery,
     };
-    const evidencePath = join(baseDirectory, model, task.id, 'evidence.json');
+    const evidencePath = join(baseDirectory, modelDirectory, task.id, 'evidence.json');
     await writeFile(evidencePath, JSON.stringify(safe(evidence, apiKey), null, 2) + '\n', { mode: 0o600, flag: 'wx' });
     const result = { model, task: task.id, status: outcome.status, runId: snapshot?.run.id ?? null,
       requests: requests.length, toolCalls: snapshot?.events.filter(event => event.type === 'tool-start').length ?? 0,

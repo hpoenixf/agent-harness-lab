@@ -36,6 +36,6 @@ This opt-in adds `x-opencode-session` with a fresh random identifier for each Ru
 
 ## Evidence and delivery checks
 
-The state root contains one directory per model and task. Each `evidence.json` retains the exact user question, model request messages and tool schemas, returned model text or tool proposals, Lab execution events, and the final answer. It omits credentials and local absolute Run paths. `batch-summary.json` gives the run statuses and check results.
+The state root contains one directory per model and task. Model directories use a stable hash so provider IDs containing slashes remain valid without becoming filesystem paths; evidence retains the original model ID. Each `evidence.json` retains the exact user question, model request messages and tool schemas, returned model text or tool proposals, Lab execution events, and the final answer. It omits credentials and local absolute Run paths. `batch-summary.json` gives the run statuses and check results.
 
 After each Run, the Lab's existing evaluator reads the saved publication and downloads its source windows and attachments over the workbench's local HTTP routes. These checks establish whether the registered report and bytes can be retrieved. They do not assess whether claims are correct or citations support them; semantic quality remains `unreviewed` until a person compares the answer with the synthetic source pages.
