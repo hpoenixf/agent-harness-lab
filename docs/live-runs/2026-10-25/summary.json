@@ -122,7 +122,7 @@
         "coreAnswer": "needs-revision",
         "notes": [
           "只读取两版第2、4页，保存报告限定了这两类比较；最终回答却称“完整对比表格”，无法代表全书条款均已比较。",
-          "报告同时保留A“仅支持Markdown”的原文，又把A是否支持PDF描述为未提及，表达相互冲突。"
+          "报告引用A“仅支持Markdown”，又在未披露事项中讨论“A未提到PDF”的假设，混淆明确限制与资料沉默，建议改写说明。"
         ],
         "method": "AI-assisted comparison with recorded source pages",
         "authorReviewed": false
